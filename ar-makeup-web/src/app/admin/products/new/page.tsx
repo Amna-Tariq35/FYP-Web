@@ -3,12 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
+import {supabase} from "@/src/lib/supabase/client";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function AddProductPage() {
   const router = useRouter();

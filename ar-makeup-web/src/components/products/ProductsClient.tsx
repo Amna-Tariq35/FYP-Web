@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -10,13 +10,80 @@ import {
   X,
   Tag,
   Layers,
+  DollarSign,
+  Heart,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import ProductCard from "./ProductCard";
 import { MakeupProduct } from "@/src/types/catalog";
 
 const ITEMS_PER_PAGE = 9;
+const WISHLIST_KEY = "fyp_makeup_wishlist";
+const RECENTLY_VIEWED_KEY = "fyp_recently_viewed";
+const MAX_RECENT = 6;
 
-// ── Defined OUTSIDE to prevent remount on every render ──────────────────────
+// ── Wishlist Hook ────────────────────────────────────────────────────────────
+export function useWishlist() {
+  const [wishlist, setWishlist] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(WISHLIST_KEY);
+      if (stored) setWishlist(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  const toggle = useCallback((productKey: string) => {
+    setWishlist((prev) => {
+      const next = prev.includes(productKey)
+        ? prev.filter((k) => k !== productKey)
+        : [...prev, productKey];
+      try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const isWished = useCallback(
+    (productKey: string) => wishlist.includes(productKey),
+    [wishlist]
+  );
+
+  return { wishlist, toggle, isWished, count: wishlist.length };
+}
+
+// ── Recently Viewed Hook ─────────────────────────────────────────────────────
+export function useRecentlyViewed(allProducts: MakeupProduct[]) {
+  const [keys, setKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(RECENTLY_VIEWED_KEY);
+      if (stored) setKeys(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  const addViewed = useCallback((productKey: string) => {
+    setKeys((prev) => {
+      const filtered = prev.filter((k) => k !== productKey);
+      const next = [productKey, ...filtered].slice(0, MAX_RECENT);
+      try { localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const recentProducts = useMemo(
+    () =>
+      keys
+        .map((k) => allProducts.find((p) => p.product_key === k))
+        .filter(Boolean) as MakeupProduct[],
+    [keys, allProducts]
+  );
+
+  return { recentProducts, addViewed };
+}
+
+// ── FilterGroup ──────────────────────────────────────────────────────────────
 function FilterGroup({
   title,
   icon,
@@ -60,6 +127,150 @@ function FilterGroup({
   );
 }
 
+// ── WishlistPanel ────────────────────────────────────────────────────────────
+// Professional approach: items are clickable links like Nykaa/Amazon wishlists
+function WishlistPanel({
+  products,
+  wishlist,
+  onToggle,
+  onClose,
+}: {
+  products: MakeupProduct[];
+  wishlist: string[];
+  onToggle: (k: string) => void;
+  onClose: () => void;
+}) {
+  const wishedProducts = products.filter((p) =>
+    wishlist.includes(p.product_key)
+  );
+
+  return (
+    <div className="wishlist-panel-overlay">
+      <div className="wishlist-panel-backdrop" onClick={onClose} />
+      <div className="wishlist-panel">
+        <div className="wishlist-panel-header">
+          <div className="wishlist-panel-title-row">
+            <Heart className="w-4 h-4" style={{ color: "var(--rose-primary)", fill: "var(--rose-primary)" }} />
+            <span className="wishlist-panel-title">My Wishlist</span>
+            <span className="wishlist-count-badge">{wishedProducts.length}</span>
+          </div>
+          <button className="drawer-close-btn" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="wishlist-panel-body">
+          {wishedProducts.length === 0 ? (
+            <div className="wishlist-empty">
+              <div className="wishlist-empty-icon">
+                <Heart className="w-8 h-8" style={{ color: "var(--rose-primary)" }} />
+              </div>
+              <p className="wishlist-empty-title">No favorites yet</p>
+              <p className="wishlist-empty-desc">
+                Tap the heart on any product to save it here.
+              </p>
+            </div>
+          ) : (
+            <div className="wishlist-items">
+              {wishedProducts.map((p) => {
+                const price =
+                  typeof p.price === "number" ? `$${p.price.toFixed(2)}` : "—";
+                return (
+                  /* ── Entire card is a link — professional pattern ── */
+                  <a
+                    key={p.product_key}
+                    href={`/products/${p.product_key}`}
+                    className="wishlist-item"
+                    onClick={onClose}
+                  >
+                    <div className="wishlist-item-info">
+                      <p className="wishlist-item-brand">{p.brand?.trim() || "—"}</p>
+                      <p className="wishlist-item-name">{p.name}</p>
+                      <p className="wishlist-item-price">{price}</p>
+                    </div>
+
+                    {/* View arrow — signals clickability */}
+                    <div className="wishlist-item-actions">
+                      <span className="wishlist-item-view-hint">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </span>
+                      <button
+                        className="wishlist-item-remove"
+                        onClick={(e) => {
+                          e.preventDefault(); // don't navigate
+                          e.stopPropagation();
+                          onToggle(p.product_key);
+                        }}
+                        aria-label="Remove from wishlist"
+                        title="Remove from wishlist"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── RecentlyViewedStrip ──────────────────────────────────────────────────────
+function RecentlyViewedStrip({
+  products,
+  wishlist,
+  onWishlistToggle,
+}: {
+  products: MakeupProduct[];
+  wishlist: string[];
+  onWishlistToggle: (k: string) => void;
+}) {
+  if (products.length === 0) return null;
+
+  return (
+    <div className="rv-section">
+      <div className="rv-header">
+        <Clock className="w-4 h-4" style={{ color: "var(--rose-primary)" }} />
+        <span className="rv-title">Recently Viewed</span>
+      </div>
+      <div className="rv-strip">
+        {products.map((p) => {
+          const price =
+            typeof p.price === "number" ? `$${p.price.toFixed(2)}` : "—";
+          const isWished = wishlist.includes(p.product_key);
+          return (
+            <a
+              key={p.product_key}
+              href={`/products/${p.product_key}`}
+              className="rv-card"
+            >
+              <div className="rv-card-body">
+                <button
+                  className={`rv-heart ${isWished ? "active" : ""}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onWishlistToggle(p.product_key);
+                  }}
+                  aria-label="Toggle wishlist"
+                >
+                  <Heart className="w-3 h-3" />
+                </button>
+                <p className="rv-brand">{p.brand?.trim() || "—"}</p>
+                <p className="rv-name">{p.name}</p>
+                <p className="rv-price">{price}</p>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────────────
 export default function ProductsClient({
   initialProducts,
 }: {
@@ -71,6 +282,50 @@ export default function ProductsClient({
   const [sortBy, setSortBy] = useState("featured");
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+
+  // Price range — input boxes for precision, slider for quick drag
+  const [maxPrice, setMaxPrice] = useState(100);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
+  // Local text state for the input boxes so user can type freely
+  const [minInput, setMinInput] = useState("0");
+  const [maxInput, setMaxInput] = useState("100");
+
+  // Hooks
+  const { wishlist, toggle: toggleWishlist, isWished, count: wishlistCount } = useWishlist();
+  const { recentProducts, addViewed } = useRecentlyViewed(initialProducts);
+
+  // Compute max price from data
+  useEffect(() => {
+    const max = Math.ceil(
+      Math.max(...initialProducts.map((p) => p.price || 0), 1)
+    );
+    setMaxPrice(max);
+    setPriceRange([0, max]);
+    setMinInput("0");
+    setMaxInput(String(max));
+  }, [initialProducts]);
+
+  // Keep input boxes in sync when slider changes
+  const handleSliderChange = (newRange: [number, number]) => {
+    setPriceRange(newRange);
+    setMinInput(String(newRange[0]));
+    setMaxInput(String(newRange[1]));
+  };
+
+  // Commit typed min value on blur
+  const commitMin = () => {
+    const val = Math.max(0, Math.min(Number(minInput) || 0, priceRange[1] - 1));
+    setPriceRange([val, priceRange[1]]);
+    setMinInput(String(val));
+  };
+
+  // Commit typed max value on blur
+  const commitMax = () => {
+    const val = Math.min(maxPrice, Math.max(Number(maxInput) || maxPrice, priceRange[0] + 1));
+    setPriceRange([priceRange[0], val]);
+    setMaxInput(String(val));
+  };
 
   const categories = useMemo(() => {
     const cats = new Set(
@@ -109,6 +364,10 @@ export default function ProductsClient({
       result = result.filter((p) => p.brand?.trim() === selectedBrand);
     }
 
+    result = result.filter(
+      (p) => (p.price || 0) >= priceRange[0] && (p.price || 0) <= priceRange[1]
+    );
+
     if (sortBy === "price-asc") {
       result.sort((a, b) => (a.price || 0) - (b.price || 0));
     } else if (sortBy === "price-desc") {
@@ -118,7 +377,7 @@ export default function ProductsClient({
     }
 
     return result;
-  }, [initialProducts, searchQuery, selectedCategory, selectedBrand, sortBy]);
+  }, [initialProducts, searchQuery, selectedCategory, selectedBrand, sortBy, priceRange]);
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = filteredProducts.slice(
@@ -126,22 +385,27 @@ export default function ProductsClient({
     currentPage * ITEMS_PER_PAGE
   );
 
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedBrand, sortBy]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedCategory, selectedBrand, sortBy, priceRange]);
+
+  const priceFilterActive = priceRange[0] > 0 || priceRange[1] < maxPrice;
 
   const activeFiltersCount = [
     selectedCategory !== "All",
     selectedBrand !== "All",
     searchQuery.trim() !== "",
+    priceFilterActive,
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
     setSearchQuery("");
     setSelectedCategory("All");
     setSelectedBrand("All");
+    setPriceRange([0, maxPrice]);
+    setMinInput("0");
+    setMaxInput(String(maxPrice));
   };
 
+  // ── Sidebar content — Price filter moved to TOP (after search, before categories) ──
   const renderSidebarContent = () => (
     <div className="sidebar-content">
       {/* Search */}
@@ -160,13 +424,93 @@ export default function ProductsClient({
             className="search-input"
           />
           {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="search-clear-btn"
-            >
+            <button onClick={() => setSearchQuery("")} className="search-clear-btn">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="sidebar-divider" />
+
+      {/* ── Price Range — MOVED UP (2nd position, most important filter) ── */}
+      <div className="filter-group">
+        <div className="filter-group-header">
+          <DollarSign className="w-3.5 h-3.5" />
+          <span>Price Range</span>
+          {priceFilterActive && (
+            <span className="price-active-dot" title="Filter active" />
+          )}
+        </div>
+
+        {/* Input boxes — precise control */}
+        <div className="price-inputs-row">
+          <div className="price-input-group">
+            <span className="price-input-prefix">$</span>
+            <input
+              type="number"
+              min={0}
+              max={maxPrice}
+              value={minInput}
+              onChange={(e) => setMinInput(e.target.value)}
+              onBlur={commitMin}
+              onKeyDown={(e) => e.key === "Enter" && commitMin()}
+              className="price-input"
+              placeholder="Min"
+              aria-label="Minimum price"
+            />
+          </div>
+          <span className="price-input-sep">—</span>
+          <div className="price-input-group">
+            <span className="price-input-prefix">$</span>
+            <input
+              type="number"
+              min={0}
+              max={maxPrice}
+              value={maxInput}
+              onChange={(e) => setMaxInput(e.target.value)}
+              onBlur={commitMax}
+              onKeyDown={(e) => e.key === "Enter" && commitMax()}
+              className="price-input"
+              placeholder="Max"
+              aria-label="Maximum price"
+            />
+          </div>
+        </div>
+
+        {/* Slider — quick visual drag */}
+        <div className="dual-slider-track">
+          <div
+            className="dual-slider-fill"
+            style={{
+              left: `${(priceRange[0] / maxPrice) * 100}%`,
+              right: `${100 - (priceRange[1] / maxPrice) * 100}%`,
+            }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={maxPrice}
+            value={priceRange[0]}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (val < priceRange[1]) handleSliderChange([val, priceRange[1]]);
+            }}
+            className="dual-slider"
+            aria-label="Minimum price slider"
+          />
+          <input
+            type="range"
+            min={0}
+            max={maxPrice}
+            value={priceRange[1]}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (val > priceRange[0]) handleSliderChange([priceRange[0], val]);
+            }}
+            className="dual-slider"
+            aria-label="Maximum price slider"
+          />
         </div>
       </div>
 
@@ -210,7 +554,6 @@ export default function ProductsClient({
 
   return (
     <>
-      {/* Scoped Styles */}
       <style>{`
         /* ── Layout ─────────────────────────────────────────── */
         .products-layout {
@@ -252,9 +595,7 @@ export default function ProductsClient({
           letter-spacing: 0.04em;
           text-transform: uppercase;
         }
-        .sidebar-filter-icon {
-          color: var(--rose-primary);
-        }
+        .sidebar-filter-icon { color: var(--rose-primary); }
         .sidebar-badge {
           margin-left: auto;
           background: var(--rose-primary);
@@ -275,7 +616,6 @@ export default function ProductsClient({
 
         /* ── Filter Groups ───────────────────────────────────── */
         .filter-group { margin-bottom: 4px; }
-
         .filter-group-header {
           display: flex;
           align-items: center;
@@ -287,7 +627,15 @@ export default function ProductsClient({
           color: var(--text-muted);
           margin-bottom: 10px;
         }
-
+        .price-active-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--rose-primary);
+          display: inline-block;
+          margin-left: 2px;
+          flex-shrink: 0;
+        }
         .filter-options-list {
           display: flex;
           flex-direction: column;
@@ -302,7 +650,6 @@ export default function ProductsClient({
           background: var(--border-soft);
           border-radius: 99px;
         }
-
         .filter-radio-label {
           display: flex;
           align-items: center;
@@ -314,7 +661,6 @@ export default function ProductsClient({
         }
         .filter-radio-label:hover { background: var(--bg-base); }
         .filter-radio-input { display: none; }
-
         .filter-radio-dot {
           width: 16px;
           height: 16px;
@@ -327,9 +673,7 @@ export default function ProductsClient({
           align-items: center;
           justify-content: center;
         }
-        .filter-radio-dot.active {
-          border-color: var(--rose-primary);
-        }
+        .filter-radio-dot.active { border-color: var(--rose-primary); }
         .filter-radio-dot.active::after {
           content: '';
           width: 7px;
@@ -338,7 +682,6 @@ export default function ProductsClient({
           background: var(--rose-primary);
           position: absolute;
         }
-
         .filter-radio-text {
           font-size: 13px;
           color: var(--text-muted);
@@ -350,6 +693,112 @@ export default function ProductsClient({
         .filter-radio-text.selected {
           color: var(--text-main);
           font-weight: 600;
+        }
+
+        /* ── Price Range — Input + Slider combo ──────────────── */
+        /* Input boxes for precise typing */
+        .price-inputs-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+        .price-input-group {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          border: 1.5px solid var(--border-soft);
+          border-radius: 10px;
+          background: var(--bg-base);
+          overflow: hidden;
+          transition: border-color 0.15s;
+        }
+        .price-input-group:focus-within { border-color: var(--rose-primary); }
+        .price-input-prefix {
+          padding: 0 6px 0 10px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--rose-primary);
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .price-input {
+          width: 100%;
+          padding: 8px 8px 8px 0;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-main);
+          background: transparent;
+          border: none;
+          outline: none;
+          -moz-appearance: textfield;
+        }
+        .price-input::-webkit-outer-spin-button,
+        .price-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .price-input-sep {
+          font-size: 12px;
+          color: var(--text-muted);
+          flex-shrink: 0;
+        }
+
+        /* Dual range slider */
+        .dual-slider-track {
+          position: relative;
+          height: 4px;
+          background: rgba(0,0,0,0.08);
+          border-radius: 99px;
+          margin: 4px 0 6px;
+        }
+        .dual-slider-fill {
+          position: absolute;
+          top: 0;
+          height: 100%;
+          background: linear-gradient(90deg, var(--rose-soft), var(--rose-primary));
+          border-radius: 99px;
+          pointer-events: none;
+        }
+        .dual-slider {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 100%;
+          height: 4px;
+          appearance: none;
+          -webkit-appearance: none;
+          background: transparent;
+          pointer-events: none;
+          outline: none;
+          margin: 0;
+        }
+        .dual-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: white;
+          border: 2.5px solid var(--rose-primary);
+          box-shadow: 0 2px 8px rgba(192,108,132,0.35);
+          pointer-events: all;
+          cursor: grab;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .dual-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.15);
+          box-shadow: 0 3px 14px rgba(192,108,132,0.45);
+        }
+        .dual-slider::-webkit-slider-thumb:active {
+          cursor: grabbing;
+          transform: scale(1.2);
+        }
+        .dual-slider::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: white;
+          border: 2.5px solid var(--rose-primary);
+          box-shadow: 0 2px 8px rgba(192,108,132,0.35);
+          pointer-events: all;
+          cursor: grab;
         }
 
         /* ── Search ──────────────────────────────────────────── */
@@ -380,7 +829,7 @@ export default function ProductsClient({
         .search-input::placeholder { color: var(--text-muted); }
         .search-input:focus {
           border-color: var(--rose-primary);
-          box-shadow: 0 0 0 3px rgba(var(--rose-primary-rgb, 220,100,120), 0.10);
+          box-shadow: 0 0 0 3px rgba(192,108,132,0.10);
         }
         .search-clear-btn {
           position: absolute;
@@ -404,7 +853,6 @@ export default function ProductsClient({
           margin: 14px 0;
           opacity: 0.7;
         }
-
         .clear-filters-btn {
           display: flex;
           align-items: center;
@@ -413,15 +861,14 @@ export default function ProductsClient({
           font-weight: 500;
           color: var(--rose-primary);
           background: none;
-          border: none;
+          border: 1.5px dashed var(--rose-primary);
           cursor: pointer;
           padding: 8px 10px;
           border-radius: 10px;
-          border: 1.5px dashed var(--rose-primary);
           width: 100%;
           transition: background 0.15s;
         }
-        .clear-filters-btn:hover { background: rgba(220,100,120,0.06); }
+        .clear-filters-btn:hover { background: rgba(192,108,132,0.06); }
         .clear-badge {
           margin-left: auto;
           background: var(--rose-primary);
@@ -449,21 +896,14 @@ export default function ProductsClient({
           box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         @media (min-width: 640px) {
-          .products-topbar {
-            flex-direction: row;
-            align-items: center;
-          }
+          .products-topbar { flex-direction: row; align-items: center; }
         }
-
         .results-count {
           font-size: 13px;
           color: var(--text-muted);
           white-space: nowrap;
         }
-        .results-count strong {
-          font-weight: 700;
-          color: var(--text-main);
-        }
+        .results-count strong { font-weight: 700; color: var(--text-main); }
 
         .topbar-right {
           display: flex;
@@ -472,8 +912,49 @@ export default function ProductsClient({
           margin-left: auto;
           width: 100%;
         }
-        @media (min-width: 640px) {
-          .topbar-right { width: auto; }
+        @media (min-width: 640px) { .topbar-right { width: auto; } }
+
+        /* Wishlist button in topbar */
+        .wishlist-topbar-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          font-size: 13px;
+          font-weight: 500;
+          border-radius: 12px;
+          border: 1.5px solid var(--border-soft);
+          background: var(--bg-base);
+          color: var(--text-main);
+          cursor: pointer;
+          white-space: nowrap;
+          transition: border-color 0.15s, background 0.15s;
+          position: relative;
+        }
+        .wishlist-topbar-btn:hover {
+          border-color: var(--rose-primary);
+          background: rgba(192,108,132,0.04);
+        }
+        .wishlist-topbar-btn .heart-icon {
+          color: var(--rose-primary);
+          transition: transform 0.2s;
+        }
+        .wishlist-topbar-btn:hover .heart-icon { transform: scale(1.2); }
+        .wishlist-topbar-badge {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          background: var(--rose-primary);
+          color: white;
+          font-size: 9px;
+          font-weight: 700;
+          width: 17px;
+          height: 17px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid var(--bg-base);
         }
 
         .mobile-filter-btn {
@@ -494,7 +975,6 @@ export default function ProductsClient({
         }
         .mobile-filter-btn:hover { border-color: var(--rose-primary); }
         @media (min-width: 1024px) { .mobile-filter-btn { display: none; } }
-
         .mobile-filter-badge {
           position: absolute;
           top: -5px;
@@ -511,10 +991,7 @@ export default function ProductsClient({
           justify-content: center;
         }
 
-        .sort-select-wrapper {
-          position: relative;
-          flex: 1;
-        }
+        .sort-select-wrapper { position: relative; flex: 1; }
         @media (min-width: 640px) { .sort-select-wrapper { flex: 0 0 auto; } }
         .sort-icon {
           position: absolute;
@@ -548,12 +1025,8 @@ export default function ProductsClient({
           gap: 20px;
           grid-template-columns: 1fr;
         }
-        @media (min-width: 480px) {
-          .products-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (min-width: 1280px) {
-          .products-grid { grid-template-columns: repeat(3, 1fr); }
-        }
+        @media (min-width: 480px) { .products-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 1280px) { .products-grid { grid-template-columns: repeat(3, 1fr); } }
 
         /* ── Empty State ─────────────────────────────────────── */
         .empty-state {
@@ -567,18 +1040,13 @@ export default function ProductsClient({
           width: 64px;
           height: 64px;
           border-radius: 50%;
-          background: var(--rose-soft, rgba(220,100,120,0.1));
+          background: rgba(192,108,132,0.10);
           display: flex;
           align-items: center;
           justify-content: center;
           margin: 0 auto 16px;
         }
-        .empty-title {
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--text-main);
-          margin-bottom: 6px;
-        }
+        .empty-title { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
         .empty-desc {
           font-size: 14px;
           color: var(--text-muted);
@@ -600,10 +1068,7 @@ export default function ProductsClient({
           cursor: pointer;
           transition: border-color 0.15s, background 0.15s;
         }
-        .empty-clear-btn:hover {
-          border-color: var(--rose-primary);
-          background: rgba(220,100,120,0.04);
-        }
+        .empty-clear-btn:hover { border-color: var(--rose-primary); background: rgba(192,108,132,0.04); }
 
         /* ── Pagination ──────────────────────────────────────── */
         .pagination-row {
@@ -630,19 +1095,9 @@ export default function ProductsClient({
           transition: border-color 0.15s, background 0.15s;
           flex-shrink: 0;
         }
-        .pagination-arrow:hover:not(:disabled) {
-          border-color: var(--rose-primary);
-          background: var(--bg-base);
-        }
-        .pagination-arrow:disabled {
-          opacity: 0.35;
-          cursor: not-allowed;
-        }
-        .pagination-nums {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
+        .pagination-arrow:hover:not(:disabled) { border-color: var(--rose-primary); background: var(--bg-base); }
+        .pagination-arrow:disabled { opacity: 0.35; cursor: not-allowed; }
+        .pagination-nums { display: flex; align-items: center; gap: 4px; }
         .pagination-num {
           min-width: 38px;
           height: 38px;
@@ -659,22 +1114,14 @@ export default function ProductsClient({
           color: var(--text-main);
           transition: all 0.15s;
         }
-        .pagination-num:hover:not(.active) {
-          border-color: var(--border-soft);
-          background: var(--bg-section);
-        }
+        .pagination-num:hover:not(.active) { border-color: var(--border-soft); background: var(--bg-section); }
         .pagination-num.active {
           background: var(--rose-primary);
           color: white;
           border-color: var(--rose-primary);
-          box-shadow: 0 2px 8px rgba(220,100,120,0.25);
+          box-shadow: 0 2px 8px rgba(192,108,132,0.25);
         }
-        .pagination-dots {
-          font-size: 13px;
-          color: var(--text-muted);
-          padding: 0 2px;
-          line-height: 38px;
-        }
+        .pagination-dots { font-size: 13px; color: var(--text-muted); padding: 0 2px; line-height: 38px; }
 
         /* ── Mobile Filter Drawer ────────────────────────────── */
         .mobile-drawer-overlay {
@@ -683,9 +1130,7 @@ export default function ProductsClient({
           z-index: 60;
           display: flex;
         }
-        @media (min-width: 1024px) {
-          .mobile-drawer-overlay { display: none; }
-        }
+        @media (min-width: 1024px) { .mobile-drawer-overlay { display: none; } }
         .mobile-drawer-backdrop {
           position: fixed;
           inset: 0;
@@ -713,11 +1158,7 @@ export default function ProductsClient({
           top: 0;
           z-index: 1;
         }
-        .mobile-drawer-title {
-          font-size: 15px;
-          font-weight: 700;
-          color: var(--text-main);
-        }
+        .mobile-drawer-title { font-size: 15px; font-weight: 700; color: var(--text-main); }
         .drawer-close-btn {
           width: 32px;
           height: 32px;
@@ -731,11 +1172,257 @@ export default function ProductsClient({
           cursor: pointer;
           transition: color 0.15s, border-color 0.15s;
         }
-        .drawer-close-btn:hover {
-          color: var(--text-main);
-          border-color: var(--rose-primary);
+        .drawer-close-btn:hover { color: var(--text-main); border-color: var(--rose-primary); }
+
+        /* ── Wishlist Panel ──────────────────────────────────── */
+        .wishlist-panel-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 70;
+          display: flex;
+          justify-content: flex-end;
         }
+        .wishlist-panel-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.40);
+          backdrop-filter: blur(4px);
+        }
+        .wishlist-panel {
+          position: relative;
+          z-index: 71;
+          width: 100%;
+          max-width: 340px;
+          background: var(--bg-section);
+          height: 100%;
+          overflow-y: auto;
+          box-shadow: -4px 0 32px rgba(0,0,0,0.15);
+          display: flex;
+          flex-direction: column;
+        }
+        .wishlist-panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 20px 16px;
+          border-bottom: 1px solid var(--border-soft);
+          background: var(--bg-base);
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          gap: 12px;
+        }
+        .wishlist-panel-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex: 1;
+        }
+        .wishlist-panel-title { font-size: 15px; font-weight: 700; color: var(--text-main); }
+        .wishlist-count-badge {
+          background: var(--rose-primary);
+          color: white;
+          font-size: 10px;
+          font-weight: 700;
+          border-radius: 99px;
+          padding: 1px 8px;
+          line-height: 18px;
+        }
+        .wishlist-panel-body { padding: 20px; flex: 1; }
+        .wishlist-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 48px 16px;
+          text-align: center;
+        }
+        .wishlist-empty-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          background: rgba(192,108,132,0.10);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+        }
+        .wishlist-empty-title { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+        .wishlist-empty-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+        .wishlist-items { display: flex; flex-direction: column; gap: 10px; }
+
+        /* ── Wishlist Item — now a clickable link ── */
+        .wishlist-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 14px;
+          border-radius: 14px;
+          border: 1px solid var(--border-soft);
+          background: var(--bg-base);
+          text-decoration: none;
+          color: inherit;
+          transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+          cursor: pointer;
+        }
+        .wishlist-item:hover {
+          border-color: rgba(192,108,132,0.35);
+          box-shadow: 0 3px 12px rgba(192,108,132,0.10);
+          transform: translateY(-1px);
+        }
+        .wishlist-item-info { flex: 1; min-width: 0; }
+        .wishlist-item-brand {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--text-muted);
+          margin-bottom: 2px;
+        }
+        .wishlist-item-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-main);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 3px;
+        }
+        .wishlist-item-price { font-size: 13px; font-weight: 700; color: var(--rose-primary); }
+
+        /* Actions: view hint + remove button */
+        .wishlist-item-actions {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+        .wishlist-item-view-hint {
+          color: var(--text-muted);
+          opacity: 0;
+          transition: opacity 0.15s;
+          display: flex;
+          align-items: center;
+        }
+        .wishlist-item:hover .wishlist-item-view-hint { opacity: 1; }
+        .wishlist-item-remove {
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          border: 1px solid var(--border-soft);
+          background: var(--bg-section);
+          color: var(--text-muted);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: color 0.15s, border-color 0.15s, background 0.15s;
+        }
+        .wishlist-item-remove:hover {
+          color: var(--rose-primary);
+          border-color: rgba(192,108,132,0.30);
+          background: rgba(192,108,132,0.06);
+        }
+
+        /* ── Recently Viewed ─────────────────────────────────── */
+        .rv-section {
+          margin-bottom: 28px;
+          background: var(--bg-section);
+          border: 1px solid var(--border-soft);
+          border-radius: 16px;
+          padding: 16px 18px 18px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .rv-header {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          margin-bottom: 14px;
+        }
+        .rv-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text-main);
+          letter-spacing: 0.02em;
+        }
+        .rv-strip {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding-bottom: 4px;
+          scrollbar-width: none;
+        }
+        .rv-strip::-webkit-scrollbar { display: none; }
+        .rv-card {
+          flex-shrink: 0;
+          width: 130px;
+          border: 1px solid var(--border-soft);
+          border-radius: 14px;
+          background: var(--bg-base);
+          overflow: hidden;
+          text-decoration: none;
+          color: inherit;
+          transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        }
+        .rv-card:hover {
+          border-color: rgba(192,108,132,0.30);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .rv-card-body { padding: 10px 11px 11px; position: relative; }
+        .rv-heart {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          border: 1px solid var(--border-soft);
+          background: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: var(--text-muted);
+          transition: color 0.15s, border-color 0.15s, background 0.15s;
+        }
+        .rv-heart.active {
+          color: var(--rose-primary);
+          border-color: rgba(192,108,132,0.35);
+          background: rgba(192,108,132,0.08);
+        }
+        .rv-heart:hover { color: var(--rose-primary); border-color: rgba(192,108,132,0.35); }
+        .rv-brand {
+          font-size: 9.5px;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--text-muted);
+          margin-bottom: 3px;
+          padding-right: 24px;
+        }
+        .rv-name {
+          font-size: 11.5px;
+          font-weight: 600;
+          color: var(--text-main);
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          margin-bottom: 6px;
+        }
+        .rv-price { font-size: 12px; font-weight: 700; color: var(--rose-primary); }
       `}</style>
+
+      {/* ── Recently Viewed Strip (above main layout) ── */}
+      <RecentlyViewedStrip
+        products={recentProducts}
+        wishlist={wishlist}
+        onWishlistToggle={toggleWishlist}
+      />
 
       <div className="products-layout">
         {/* ── Desktop Sidebar ── */}
@@ -753,23 +1440,27 @@ export default function ProductsClient({
         {/* ── Mobile Filter Drawer ── */}
         {isMobileFiltersOpen && (
           <div className="mobile-drawer-overlay">
-            <div
-              className="mobile-drawer-backdrop"
-              onClick={() => setIsMobileFiltersOpen(false)}
-            />
+            <div className="mobile-drawer-backdrop" onClick={() => setIsMobileFiltersOpen(false)} />
             <div className="mobile-drawer">
               <div className="mobile-drawer-header">
                 <span className="mobile-drawer-title">Filters</span>
-                <button
-                  className="drawer-close-btn"
-                  onClick={() => setIsMobileFiltersOpen(false)}
-                >
+                <button className="drawer-close-btn" onClick={() => setIsMobileFiltersOpen(false)}>
                   <X className="w-4 h-4" />
                 </button>
               </div>
               {renderSidebarContent()}
             </div>
           </div>
+        )}
+
+        {/* ── Wishlist Panel ── */}
+        {isWishlistOpen && (
+          <WishlistPanel
+            products={initialProducts}
+            wishlist={wishlist}
+            onToggle={toggleWishlist}
+            onClose={() => setIsWishlistOpen(false)}
+          />
         )}
 
         {/* ── Main Content ── */}
@@ -782,6 +1473,22 @@ export default function ProductsClient({
             </span>
 
             <div className="topbar-right">
+              {/* Wishlist Button */}
+              <button
+                className="wishlist-topbar-btn"
+                onClick={() => setIsWishlistOpen(true)}
+                aria-label="Open wishlist"
+              >
+                <Heart
+                  className="w-4 h-4 heart-icon"
+                  style={wishlistCount > 0 ? { fill: "var(--rose-primary)" } : {}}
+                />
+                <span className="hidden sm:inline">Wishlist</span>
+                {wishlistCount > 0 && (
+                  <span className="wishlist-topbar-badge">{wishlistCount}</span>
+                )}
+              </button>
+
               <button
                 className="mobile-filter-btn"
                 onClick={() => setIsMobileFiltersOpen(true)}
@@ -817,8 +1524,7 @@ export default function ProductsClient({
               </div>
               <p className="empty-title">No products found</p>
               <p className="empty-desc">
-                Nothing matched your current filters. Try adjusting your search
-                or clearing the filters.
+                Nothing matched your current filters. Try adjusting your search or clearing the filters.
               </p>
               <button className="empty-clear-btn" onClick={clearAllFilters}>
                 <X className="w-4 h-4" />
@@ -828,7 +1534,13 @@ export default function ProductsClient({
           ) : (
             <div className="products-grid">
               {paginatedProducts.map((p) => (
-                <ProductCard key={p.product_key} product={p} />
+                <ProductCard
+                  key={p.product_key}
+                  product={p}
+                  isWished={isWished(p.product_key)}
+                  onWishlistToggle={toggleWishlist}
+                  onView={addViewed}
+                />
               ))}
             </div>
           )}
@@ -851,18 +1563,12 @@ export default function ProductsClient({
                   const isFirst = page === 1;
                   const isLast = page === totalPages;
                   const isNear = Math.abs(currentPage - page) <= 1;
-
                   if (!isFirst && !isLast && !isNear) {
                     if (page === 2 || page === totalPages - 1) {
-                      return (
-                        <span key={page} className="pagination-dots">
-                          ···
-                        </span>
-                      );
+                      return <span key={page} className="pagination-dots">···</span>;
                     }
                     return null;
                   }
-
                   return (
                     <button
                       key={page}
@@ -877,9 +1583,7 @@ export default function ProductsClient({
 
               <button
                 className="pagination-arrow"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
                 aria-label="Next page"
               >
