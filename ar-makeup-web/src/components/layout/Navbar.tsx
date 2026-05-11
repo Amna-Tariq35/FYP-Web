@@ -17,36 +17,32 @@ export default function Navbar() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const { status: sessionState } = useSession();
 
-
   const isActive = (href: string) => pathname === href;
 
   useEffect(() => setIsMenuOpen(false), [sessionState]);
+
   useEffect(() => {
-  // session loading ke during avoid (optional)
-  if (sessionState === "loading") return;
+    if (sessionState === "loading") return;
 
-  const updateCount = () => {
-    const state = loadCart();
-    setCartCount(getCartCount(state));
-  };
+    const updateCount = () => {
+      const state = loadCart();
+      setCartCount(getCartCount(state));
+    };
 
-  updateCount(); // ✅ initial sync
+    updateCount();
 
-  // ✅ same-tab updates (our custom event fired in saveCart)
-  window.addEventListener("cart_updated", updateCount);
+    window.addEventListener("cart_updated", updateCount);
 
-  // ✅ multi-tab updates (native storage event)
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === "ar_makeup_cart_v1") updateCount();
-  };
-  window.addEventListener("storage", onStorage);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "ar_makeup_cart_v1") updateCount();
+    };
+    window.addEventListener("storage", onStorage);
 
-  return () => {
-    window.removeEventListener("cart_updated", updateCount);
-    window.removeEventListener("storage", onStorage);
-  };
-}, [sessionState]);
-
+    return () => {
+      window.removeEventListener("cart_updated", updateCount);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [sessionState]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -182,16 +178,41 @@ export default function Navbar() {
                 <Link
                   href="/my-looks"
                   onClick={() => setIsMenuOpen(false)}
-                  className="block px-4 py-3 text-sm text-black/75 hover:bg-black/5 hover:text-black"
+                  className="flex items-center gap-2 px-4 py-3 text-sm text-black/75 hover:bg-black/5 hover:text-black transition-colors"
                 >
+                  {/* Sparkle icon for My Looks */}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="opacity-50">
+                    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                  </svg>
                   My Looks
                 </Link>
+
+                <Link
+                  href="/my-orders"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-3 text-sm text-black/75 hover:bg-black/5 hover:text-black transition-colors"
+                >
+                  {/* Package/box icon for My Orders */}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="opacity-50">
+                    <path d="M20 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                    <path d="M12 12v4M10 14h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  My Orders
+                </Link>
+
+                <div className="h-px bg-black/10" />
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="block w-full px-4 py-3 text-left text-sm text-black/75 hover:bg-black/5 hover:text-black"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-black/75 hover:bg-black/5 hover:text-black transition-colors"
                 >
+                  {/* Logout icon */}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="opacity-50">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="m16 17 5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                   Log out
                 </button>
               </div>

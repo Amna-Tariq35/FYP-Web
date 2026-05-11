@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { MakeupProduct, ProductShade } from "@/src/types/catalog";
 import { addToCart } from "@/src/store/cart";
+import { Check } from "lucide-react";
 
 type Props = {
   product: MakeupProduct;
@@ -12,7 +13,6 @@ type Props = {
 function safeHex(hex: string | null) {
   if (!hex) return null;
   const h = hex.trim();
-  // allow "#RRGGBB" or "RRGGBB"
   if (/^#?[0-9A-Fa-f]{6}$/.test(h)) return h.startsWith("#") ? h : `#${h}`;
   return null;
 }
@@ -24,17 +24,15 @@ export default function AddToCartPanel({ product, shades }: Props) {
 
   const hasShades = shades.length > 0;
 
-  const selectedShade = useMemo(() => {
-    if (!selectedShadeKey) return null;
-    return shades.find((s) => s.shade_key === selectedShadeKey) || null;
-  }, [selectedShadeKey, shades]);
+  const selectedShade = useMemo(
+    () => shades.find((s) => s.shade_key === selectedShadeKey) ?? null,
+    [selectedShadeKey, shades]
+  );
 
-  // ✅ Only disable main action if shades exist and none is selected
   const canAdd = !hasShades || !!selectedShade;
 
   function handleAdd() {
     if (!canAdd) return;
-
     addToCart({
       product_key: product.product_key,
       shade_key: selectedShade?.shade_key ?? "no-shade",
@@ -45,43 +43,28 @@ export default function AddToCartPanel({ product, shades }: Props) {
       price: product.price,
       image_url: product.image_url,
     });
-
     setAdded(true);
-    setTimeout(() => setAdded(false), 1600);
+    setTimeout(() => setAdded(false), 1800);
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-section)] p-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-section)] p-6 space-y-6">
+
+      {/* ── Shade selector ── */}
+      {hasShades && (
         <div>
-          <h3 className="text-base font-semibold text-[var(--text-main)]">
-            Add to cart
-          </h3>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {hasShades
-              ? "Choose a shade, then set quantity."
-              : "Set quantity and add."}
-          </p>
-        </div>
-
-        {/* Selected preview */}
-        {hasShades ? (
-          <div className="text-right">
-            <p className="text-xs text-[var(--text-muted)]">Selected</p>
-            <p className="text-sm font-medium text-[var(--text-main)]">
-              {selectedShade?.shade_name ?? "None"}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Shade
             </p>
+            {selectedShade && (
+              <p className="text-[12.5px] font-medium text-[var(--text-main)]">
+                {selectedShade.shade_name}
+              </p>
+            )}
           </div>
-        ) : null}
-      </div>
 
-      {/* Shades */}
-      <div className="mt-6">
-        <p className="text-sm font-medium text-[var(--text-main)]">Shade</p>
-
-        {hasShades ? (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {shades.map((shade) => {
               const active = shade.shade_key === selectedShadeKey;
               const hex = safeHex(shade.shade_hex);
@@ -91,67 +74,56 @@ export default function AddToCartPanel({ product, shades }: Props) {
                   key={shade.shade_key}
                   type="button"
                   onClick={() => setSelectedShadeKey(shade.shade_key)}
+                  title={shade.shade_name}
                   className={[
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition",
-                    "bg-white text-[var(--text-secondary)]",
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-all duration-150",
                     active
-                      ? "border-[var(--rose-primary)] bg-[var(--rose-primary)]/10"
-                      : "border-[var(--border-soft)] hover:border-[var(--rose-primary)]",
+                      ? "border-[var(--rose-primary)] bg-[var(--rose-primary)]/8 text-[var(--text-main)] shadow-sm"
+                      : "border-[var(--border-soft)] bg-white text-[var(--text-muted)] hover:border-[var(--rose-primary)]/50",
                   ].join(" ")}
                 >
-                  {/* color dot */}
                   <span
-                    className="h-3.5 w-3.5 rounded-full border border-black/10"
+                    className="h-3 w-3 rounded-full border border-black/10 flex-shrink-0"
                     style={{ backgroundColor: hex ?? "transparent" }}
-                    aria-hidden="true"
+                    aria-hidden
                   />
-                  <span className="max-w-[140px] truncate">
-                    {shade.shade_name}
-                  </span>
+                  <span className="max-w-[130px] truncate">{shade.shade_name}</span>
                 </button>
               );
             })}
           </div>
-        ) : (
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
-            No shades available.
-          </p>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Quantity */}
-      <div className="mt-6">
-        <p className="text-sm font-medium text-[var(--text-main)]">Quantity</p>
-
-        <div
-          className="mt-2 inline-flex items-center gap-3 rounded-xl border border-[var(--rose-soft)]
-
- bg-[var(--bg-section)] px-3 py-2"
-        >
+      {/* ── Quantity ── */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-3">
+          Quantity
+        </p>
+        <div className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-soft)] bg-white px-2 py-1.5">
           <button
             type="button"
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             disabled={quantity === 1}
             className={[
-              "h-9 w-9 rounded-full border transition flex items-center justify-center",
+              "h-8 w-8 rounded-lg border text-base font-medium transition flex items-center justify-center select-none",
               quantity === 1
-                ? "cursor-not-allowed border-[var(--border-soft)] text-black/30"
-                : "border-[var(--rose-soft)] hover:border-[var(--rose-primary)] hover:bg-[var(--rose-primary)]/10 text-[var(--text-main)]",
+                ? "cursor-not-allowed border-[var(--border-soft)] text-black/20"
+                : "border-[var(--border-soft)] hover:border-[var(--rose-primary)] hover:text-[var(--rose-primary)] text-[var(--text-main)]",
             ].join(" ")}
             aria-label="Decrease quantity"
           >
             −
           </button>
 
-          <span className="w-6 text-center text-sm font-semibold text-[var(--text-main)]">
+          <span className="w-8 text-center text-sm font-semibold text-[var(--text-main)] tabular-nums">
             {quantity}
           </span>
 
           <button
             type="button"
             onClick={() => setQuantity((q) => q + 1)}
-            className="h-9 w-9 rounded-full border border-[var(--rose-soft)]
- transition hover:border-[var(--rose-primary)] hover:bg-[var(--rose-primary)]/10 text-[var(--text-main)] flex items-center justify-center"
+            className="h-8 w-8 rounded-lg border border-[var(--border-soft)] hover:border-[var(--rose-primary)] hover:text-[var(--rose-primary)] text-[var(--text-main)] transition flex items-center justify-center select-none text-base font-medium"
             aria-label="Increase quantity"
           >
             +
@@ -159,19 +131,30 @@ export default function AddToCartPanel({ product, shades }: Props) {
         </div>
       </div>
 
-      {/* Add button */}
+      {/* ── Add button ── */}
       <button
         type="button"
         onClick={handleAdd}
         disabled={!canAdd}
         className={[
-          "mt-6 w-full rounded-xl py-3 text-sm font-medium transition",
-          canAdd
-            ? "bg-[var(--rose-primary)] text-white hover:opacity-95"
-            : "bg-[var(--rose-soft)] text-white opacity-60 cursor-not-allowed",
+          "w-full rounded-xl py-3 text-sm font-semibold tracking-wide transition-all duration-200 flex items-center justify-center gap-2",
+          added
+            ? "bg-[var(--rose-primary)]/90 text-white"
+            : canAdd
+            ? "bg-[var(--rose-primary)] text-white hover:brightness-95 active:scale-[0.99]"
+            : "bg-[var(--rose-soft)] text-white/70 cursor-not-allowed",
         ].join(" ")}
       >
-        {added ? "Added ✓" : canAdd ? "Add to cart" : "Select a shade first"}
+        {added ? (
+          <>
+            <Check size={15} strokeWidth={2.5} />
+            Added to cart
+          </>
+        ) : canAdd ? (
+          "Add to cart"
+        ) : (
+          "Select a shade to continue"
+        )}
       </button>
     </div>
   );

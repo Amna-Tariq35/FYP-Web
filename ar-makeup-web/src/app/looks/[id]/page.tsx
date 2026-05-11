@@ -15,26 +15,16 @@ import {
 } from "lucide-react";
 import { SavedLook, LookItemWithProduct } from "../../../types";
 import { supabase } from "../../../lib/supabase/client";
-import { addToCart } from "@/src/store/cart"; // ← same as AddToCartPanel
+import { addToCart } from "@/src/store/cart";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CONFIG — adjust these if your Supabase table / column names differ
-// ─────────────────────────────────────────────────────────────────────────────
-const PRODUCTS_TABLE  = "makeup_products"; // ← your actual products table name
-const PRODUCT_KEY_COL = "product_key";     // ← your actual unique key column
-// ─────────────────────────────────────────────────────────────────────────────
+const PRODUCTS_TABLE  = "makeup_products";
+const PRODUCT_KEY_COL = "product_key";
 
-/**
- * Sanitizes image URLs stored in Supabase:
- * - Rejects base64 blobs (data:... or suspiciously long strings)
- * - Strips surrounding quotes  'https://...'  →  https://...
- * - Fixes single-slash protocol  https:/img  →  https://img
- */
 function sanitizeImageUrl(raw?: string | null): string | null {
   if (!raw) return null;
   if (raw.startsWith("data:") || raw.length > 2000) return null;
-  let url = raw.trim().replace(/^['"]|['"]$/g, "");       // strip quotes
-  url = url.replace(/^(https?):\/([^/])/, "$1://$2");     // fix https:/
+  let url = raw.trim().replace(/^['"]|['"]$/g, "");
+  url = url.replace(/^(https?):\/([^/])/, "$1://$2");
   try { new URL(url); return url; } catch { return null; }
 }
 
@@ -80,7 +70,7 @@ function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
   );
 }
 
-// ── Look image with fallback ──────────────────────────────────────────────────
+// ── Look hero image with fallback ─────────────────────────────────────────────
 function LookHeroImage({ src, alt }: { src?: string | null; alt: string }) {
   const cleanSrc = sanitizeImageUrl(src);
   const [errored, setErrored] = useState(false);
@@ -88,7 +78,9 @@ function LookHeroImage({ src, alt }: { src?: string | null; alt: string }) {
     return (
       <div className="look-hero-fallback">
         <ImageOff className="w-10 h-10" style={{ color: "var(--border-soft)" }} />
-        <span style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>No preview available</span>
+        <span style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>
+          No preview available
+        </span>
       </div>
     );
   }
@@ -117,20 +109,17 @@ export default function LookDetailPage() {
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [allAdded, setAllAdded] = useState(false);
 
-  // ── Toast helper ──
   const pushToast = useCallback((message: string, type: Toast["type"] = "success") => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+    const tid = Date.now();
+    setToasts((prev) => [...prev, { id: tid, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== tid)), 3000);
   }, []);
 
-  // ── Fetch data ──
   useEffect(() => {
     if (!id) return;
 
     const fetchLookDetails = async () => {
       try {
-        // 1. Look header
         const { data: lookData, error: lookError } = await supabase
           .from("saved_looks")
           .select("*")
@@ -144,7 +133,6 @@ export default function LookDetailPage() {
         }
         setLook(lookData as SavedLook);
 
-        // 2. Look items
         const { data: itemsData, error: itemsError } = await supabase
           .from("saved_look_items")
           .select("*")
@@ -158,10 +146,7 @@ export default function LookDetailPage() {
           return;
         }
 
-        // 3. Fetch matching products using configured table & column names
-        const productKeys = itemsData
-          .map((item) => item.product_key)
-          .filter(Boolean);
+        const productKeys = itemsData.map((item) => item.product_key).filter(Boolean);
 
         const { data: productsData, error: productsError } = await supabase
           .from(PRODUCTS_TABLE)
@@ -177,13 +162,10 @@ export default function LookDetailPage() {
           throw productsError;
         }
 
-        // 4. Manually join items ↔ products
         const formattedItems: LookItemWithProduct[] = itemsData.map((item) => ({
           ...item,
           product:
-            productsData?.find(
-              (p) => p[PRODUCT_KEY_COL] === item.product_key
-            ) ?? null,
+            productsData?.find((p) => p[PRODUCT_KEY_COL] === item.product_key) ?? null,
         }));
 
         setItems(formattedItems);
@@ -198,12 +180,10 @@ export default function LookDetailPage() {
     fetchLookDetails();
   }, [id, pushToast]);
 
-  // ── Cart handlers ──
   const handleAddToCart = useCallback(
     (item: LookItemWithProduct) => {
       const p = item.product;
       if (!p) return;
-
       addToCart({
         product_key: p.product_key,
         shade_key:   "no-shade",
@@ -214,7 +194,6 @@ export default function LookDetailPage() {
         price:       p.price,
         image_url:   p.image_url,
       });
-
       setAddedIds((prev) => new Set(prev).add(item.id));
       pushToast(`"${p.name}" added to cart`);
     },
@@ -224,7 +203,6 @@ export default function LookDetailPage() {
   const handleAddAllToCart = useCallback(() => {
     const validItems = items.filter((i) => i.product);
     if (validItems.length === 0) return;
-
     validItems.forEach((item) => {
       const p = item.product!;
       addToCart({
@@ -238,19 +216,14 @@ export default function LookDetailPage() {
         image_url:   p.image_url,
       });
     });
-
     setAddedIds(new Set(validItems.map((i) => i.id)));
     setAllAdded(true);
     pushToast(`${validItems.length} product${validItems.length > 1 ? "s" : ""} added to cart`);
   }, [items, pushToast]);
 
-  const totalPrice = items.reduce(
-    (sum, item) => sum + (item.product?.price ?? 0),
-    0
-  );
+  const totalPrice = items.reduce((sum, item) => sum + (item.product?.price ?? 0), 0);
   const validItemCount = items.filter((i) => i.product).length;
 
-  // ── Loading ──
   if (loading) {
     return (
       <>
@@ -262,7 +235,6 @@ export default function LookDetailPage() {
     );
   }
 
-  // ── Not found ──
   if (notFound || !look) {
     return (
       <>
@@ -281,7 +253,6 @@ export default function LookDetailPage() {
     );
   }
 
-  // ── Main ──
   return (
     <>
       <style>{detailStyles}</style>
@@ -290,12 +261,10 @@ export default function LookDetailPage() {
       <div className="detail-page">
         <div className="detail-container">
 
-          {/* Back link */}
           <Link href="/my-looks" className="back-link">
             <ArrowLeft className="w-4 h-4" /> Back to My Looks
           </Link>
 
-          {/* Card */}
           <div className="detail-card">
 
             {/* Left — Hero image */}
@@ -320,7 +289,7 @@ export default function LookDetailPage() {
                 )}
               </div>
 
-              {/* Products section */}
+              {/* Products */}
               <div className="products-section">
                 <div className="products-section-header">
                   <Layers className="w-4 h-4" style={{ color: "var(--rose-primary)" }} />
@@ -337,13 +306,9 @@ export default function LookDetailPage() {
                     {items.map((item) => {
                       if (!item.product) return null;
                       const isAdded = addedIds.has(item.id);
-
                       return (
                         <div key={item.id} className="product-row">
-                          <ProductImage
-                            src={item.product.image_url}
-                            alt={item.product.name}
-                          />
+                          <ProductImage src={item.product.image_url} alt={item.product.name} />
                           <div className="product-info">
                             <h4 className="product-name">{item.product.name}</h4>
                             <div className="product-meta">
@@ -364,11 +329,7 @@ export default function LookDetailPage() {
                             className={`add-btn ${isAdded ? "add-btn--added" : ""}`}
                             aria-label={isAdded ? "Added to cart" : `Add ${item.product.name} to cart`}
                           >
-                            {isAdded ? (
-                              <Check className="w-4 h-4" />
-                            ) : (
-                              <Plus className="w-4 h-4" />
-                            )}
+                            {isAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                           </button>
                         </div>
                       );
@@ -377,7 +338,7 @@ export default function LookDetailPage() {
                 )}
               </div>
 
-              {/* Footer — total + CTA */}
+              {/* Footer */}
               <div className="detail-footer">
                 <div className="total-row">
                   <span className="total-label">Total Look Value</span>
@@ -391,8 +352,7 @@ export default function LookDetailPage() {
                 >
                   {allAdded ? (
                     <>
-                      <Check className="w-5 h-5" />
-                      All Added to Cart
+                      <Check className="w-5 h-5" /> All Added to Cart
                     </>
                   ) : (
                     <>
@@ -414,184 +374,171 @@ export default function LookDetailPage() {
   );
 }
 
-// ── Styles (scoped) ───────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 const detailStyles = `
-  /* Page */
   .detail-page {
     min-height: 100vh;
     background: var(--bg-base);
-    padding: 112px 16px 64px;
+    padding: 80px 16px 64px;
   }
   .detail-page--center {
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .detail-container { max-width: 1280px; margin: 0 auto; }
+  .detail-container { max-width: 1200px; margin: 0 auto; }
 
-  /* Spinner */
   @keyframes ld-spin { to { transform: rotate(360deg); } }
   .spinner {
-    width: 44px; height: 44px;
+    width: 40px; height: 40px;
     border-radius: 50%;
-    border: 3px solid var(--border-soft);
+    border: 2.5px solid var(--border-soft);
     border-top-color: var(--rose-primary);
     animation: ld-spin 0.75s linear infinite;
   }
 
-  /* Back link */
   .back-link {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    font-size: 13.5px;
-    font-weight: 600;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
     color: var(--text-muted);
     text-decoration: none;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     transition: color 0.15s;
   }
   .back-link:hover { color: var(--rose-primary); }
 
-  /* Not found */
   .not-found-box {
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-  .not-found-title { font-size: 22px; font-weight: 700; color: var(--text-main); margin: 0 0 8px; }
-  .not-found-desc  { font-size: 14px; color: var(--text-muted); margin: 0 0 20px; }
+  .not-found-title {
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0 0 8px;
+  }
+  .not-found-desc { font-size: 13.5px; color: var(--text-muted); margin: 0 0 20px; font-weight: 300; }
   .not-found-back {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13.5px; font-weight: 600;
+    font-size: 13px; font-weight: 600;
     color: var(--rose-primary); text-decoration: none;
     transition: opacity 0.15s;
   }
   .not-found-back:hover { opacity: 0.75; }
 
-  /* Detail card */
   .detail-card {
     background: var(--bg-section);
     border: 1px solid var(--border-soft);
-    border-radius: 28px;
+    border-radius: 24px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
   }
   @media (min-width: 1024px) { .detail-card { flex-direction: row; } }
 
-  /* Left — image */
   .detail-left {
     flex-shrink: 0;
     width: 100%;
-    min-height: 340px;
-    position: relative;
+    min-height: 320px;
     overflow: hidden;
     background: var(--bg-base);
   }
   @media (min-width: 1024px) {
-    .detail-left { width: 44%; min-height: 600px; }
+    .detail-left { width: 42%; min-height: 580px; }
   }
   .look-hero-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
     min-height: inherit;
   }
   .look-hero-fallback {
-    width: 100%;
-    height: 100%;
+    width: 100%; height: 100%;
     min-height: inherit;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
   }
 
-  /* Right — details */
   .detail-right {
     flex: 1;
-    padding: 32px 28px;
+    padding: 28px 24px;
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 24px;
     overflow-y: auto;
   }
-  @media (min-width: 1024px) { .detail-right { padding: 40px 44px; } }
+  @media (min-width: 1024px) { .detail-right { padding: 36px 40px; } }
 
-  /* Header */
-  .detail-header {}
   .detail-title {
-    font-size: clamp(22px, 3vw, 32px);
-    font-weight: 800;
+    font-size: clamp(20px, 2.8vw, 28px);
+    font-weight: 600;
     color: var(--text-main);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
     line-height: 1.2;
     margin: 0 0 14px;
   }
-  .detail-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+  .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; }
   .detail-tag {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 12px;
+    padding: 4px 11px;
     background: var(--bg-base);
     border: 1px solid var(--border-soft);
     border-radius: 99px;
-    font-size: 12px; font-weight: 500;
+    font-size: 11.5px; font-weight: 500;
     color: var(--text-muted);
   }
 
-  /* Products section */
-  .products-section { flex: 1; display: flex; flex-direction: column; gap: 14px; }
-  .products-section-header {
-    display: flex; align-items: center; gap: 8px;
-  }
+  .products-section { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .products-section-header { display: flex; align-items: center; gap: 8px; }
   .products-section-title {
-    font-size: 15px; font-weight: 700;
-    color: var(--text-main); margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0;
   }
   .products-count {
     margin-left: 2px;
     background: var(--bg-base);
     border: 1px solid var(--border-soft);
     border-radius: 99px;
-    font-size: 11px; font-weight: 700;
+    font-size: 10.5px; font-weight: 600;
     color: var(--text-muted);
     padding: 1px 8px;
     line-height: 18px;
   }
-  .no-products { font-size: 13.5px; color: var(--text-muted); font-style: italic; }
+  .no-products { font-size: 13px; color: var(--text-muted); font-style: italic; font-weight: 300; }
+  .products-list { display: flex; flex-direction: column; gap: 9px; }
 
-  .products-list { display: flex; flex-direction: column; gap: 10px; }
-
-  /* Product row */
   .product-row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 12px 14px;
+    gap: 13px;
+    padding: 11px 13px;
     background: var(--bg-base);
     border: 1px solid var(--border-soft);
-    border-radius: 16px;
+    border-radius: 14px;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .product-row:hover {
-    border-color: color-mix(in srgb, var(--rose-primary) 30%, transparent);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-color: rgba(192,108,132,0.28);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
 
   .product-img {
-    width: 60px; height: 60px;
-    border-radius: 12px;
+    width: 56px; height: 56px;
+    border-radius: 11px;
     object-fit: cover;
     border: 1px solid var(--border-soft);
     flex-shrink: 0;
   }
   .product-img-fallback {
-    width: 60px; height: 60px;
-    border-radius: 12px;
+    width: 56px; height: 56px;
+    border-radius: 11px;
     border: 1px solid var(--border-soft);
     background: var(--bg-section);
     display: flex; align-items: center; justify-content: center;
@@ -600,27 +547,28 @@ const detailStyles = `
 
   .product-info { flex: 1; min-width: 0; }
   .product-name {
-    font-size: 14px; font-weight: 700;
+    font-size: 13.5px;
+    font-weight: 600;
     color: var(--text-main);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     margin: 0 0 3px;
   }
   .product-meta {
-    font-size: 11.5px; color: var(--text-muted);
-    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 4px;
     text-transform: capitalize;
     margin-bottom: 4px;
+    font-weight: 400;
   }
-  .meta-dot { opacity: 0.5; }
-  .product-price { font-size: 14px; font-weight: 700; color: var(--rose-primary); }
+  .meta-dot { opacity: 0.4; }
+  .product-price { font-size: 13px; font-weight: 600; color: var(--rose-primary); }
 
-  /* Add button */
   .add-btn {
-    width: 36px; height: 36px; flex-shrink: 0;
-    border-radius: 11px;
-    border: 1.5px solid var(--border-soft);
+    width: 34px; height: 34px; flex-shrink: 0;
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
     background: var(--bg-section);
-    color: var(--text-main);
+    color: var(--text-muted);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     transition: all 0.18s;
@@ -628,84 +576,87 @@ const detailStyles = `
   .add-btn:hover {
     border-color: var(--rose-primary);
     color: var(--rose-primary);
-    background: color-mix(in srgb, var(--rose-primary) 8%, transparent);
+    background: rgba(192,108,132,0.07);
   }
   .add-btn--added {
     border-color: #22c55e;
-    background: rgba(34,197,94,0.1);
+    background: rgba(34,197,94,0.09);
     color: #22c55e;
   }
   .add-btn--added:hover {
     border-color: #22c55e;
     color: #22c55e;
-    background: rgba(34,197,94,0.15);
+    background: rgba(34,197,94,0.14);
   }
 
-  /* Footer */
   .detail-footer {
     border-top: 1px solid var(--border-soft);
-    padding-top: 22px;
+    padding-top: 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     margin-top: auto;
   }
   .total-row {
     display: flex; align-items: center; justify-content: space-between;
   }
-  .total-label { font-size: 13.5px; font-weight: 500; color: var(--text-muted); }
-  .total-price { font-size: 24px; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; }
+  .total-label { font-size: 12.5px; font-weight: 400; color: var(--text-muted); }
+  .total-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.015em;
+  }
 
   .add-all-btn {
     width: 100%;
-    display: flex; align-items: center; justify-content: center; gap: 9px;
-    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 24px;
     background: var(--rose-primary);
     color: white;
     border: none;
-    border-radius: 16px;
-    font-size: 14.5px; font-weight: 700;
+    border-radius: 14px;
+    font-size: 13.5px; font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.15s, transform 0.15s, background 0.2s;
+    transition: opacity 0.15s, background 0.2s;
   }
-  .add-all-btn:hover:not(:disabled) { opacity: 0.9; transform: scale(1.01); }
-  .add-all-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-  .add-all-btn--done {
-    background: #22c55e;
-  }
-  .add-all-btn--done:hover:not(:disabled) { opacity: 0.9; transform: none; }
+  .add-all-btn:hover:not(:disabled) { opacity: 0.88; }
+  .add-all-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .add-all-btn--done { background: #22c55e; }
+  .add-all-btn--done:hover:not(:disabled) { opacity: 0.88; }
   .add-all-count {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.22);
     border-radius: 99px;
-    font-size: 11px; font-weight: 700;
+    font-size: 10.5px; font-weight: 700;
     padding: 1px 8px; line-height: 18px;
   }
 
-  /* Toast */
   .toast-container {
     position: fixed;
     bottom: 24px; right: 24px;
     z-index: 9999;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 9px;
     pointer-events: none;
   }
   @keyframes toast-in {
-    from { opacity: 0; transform: translateY(12px) scale(0.96); }
-    to   { opacity: 1; transform: translateY(0)    scale(1); }
+    from { opacity: 0; transform: translateY(10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
   .toast {
-    display: flex; align-items: center; gap: 10px;
-    padding: 12px 18px;
-    border-radius: 14px;
-    font-size: 13.5px; font-weight: 600;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.14);
-    animation: toast-in 0.25s ease;
-    max-width: 320px;
+    display: flex; align-items: center; gap: 9px;
+    padding: 11px 16px;
+    border-radius: 13px;
+    font-size: 13px; font-weight: 500;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+    animation: toast-in 0.22s ease;
+    max-width: 300px;
+    background: #fff;
+    color: #1a1a1a;
   }
-  .toast--success { background: #fff; color: #1a1a1a; border: 1px solid rgba(34,197,94,0.3); }
-  .toast--error   { background: #fff; color: #1a1a1a; border: 1px solid rgba(239,68,68,0.3); }
+  .toast--success { border: 1px solid rgba(34,197,94,0.28); }
+  .toast--error   { border: 1px solid rgba(239,68,68,0.28); }
   .toast-icon { flex-shrink: 0; }
   .toast--success .toast-icon { color: #22c55e; }
   .toast--error   .toast-icon { color: #ef4444; }

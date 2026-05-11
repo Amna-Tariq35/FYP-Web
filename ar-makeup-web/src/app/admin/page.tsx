@@ -5,135 +5,228 @@ import { DollarSign, ShoppingBag, Clock, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/src/lib/supabase/client";
 
+type StatusStyle = { bg: string; text: string };
+
+function orderStatusStyle(status: string): StatusStyle {
+  const s = (status || "").toLowerCase();
+  const map: Record<string, StatusStyle> = {
+    paid:       { bg: "rgba(34,197,94,0.12)",  text: "#15803d" },
+    processing: { bg: "rgba(234,179,8,0.12)",  text: "#a16207" },
+    shipped:    { bg: "rgba(59,130,246,0.12)", text: "#1d4ed8" },
+    delivered:  { bg: "rgba(168,85,247,0.12)", text: "#7e22ce" },
+    cancelled:  { bg: "rgba(0,0,0,0.07)",      text: "#6b7280" },
+    failed:     { bg: "rgba(239,68,68,0.12)",  text: "#b91c1c" },
+  };
+  return map[s] ?? { bg: "rgba(192,108,132,0.12)", text: "#C06C84" };
+}
+
+type DashboardStats = {
+  totalRevenue: number;
+  totalOrders: number;
+  pendingOrdersCount: number;
+  recentOrders: any[];
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
-  const [stats, setStats] = useState({
+
+  const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalOrders: 0,
     pendingOrdersCount: 0,
-    recentOrders: [] as any[]
+    recentOrders: [],
   });
   const [loading, setLoading] = useState(true);
 
-// src/app/admin/page.tsx ke andar fetchDashboardData function ko update karein:
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
 
-useEffect(() => {
-  async function fetchDashboardData() {
-    try {
-      // 1. Current user ka token get karein
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      // 2. Fetch request mein token as a Header bhejein
-      const res = await fetch("/api/admin/dashboard", {
-        headers: {
-          "Authorization": `Bearer ${token}` // Yeh line backend ke verifyAdmin ko pass karegi
-        }
-      });
-      
-      const data = await res.json();
-      if (res.ok && data) {
-        setStats({
-          totalRevenue: data.totalRevenue || 0,
-          totalOrders: data.totalOrders || 0,
-          pendingOrdersCount: data.pendingOrdersCount || 0,
-          recentOrders: data.recentOrders || []
+        const res = await fetch("/api/admin/dashboard", {
+          headers: { Authorization: `Bearer ${token}` },
         });
-      } else {
-        console.error("API Error:", data.error);
-      }
-    } catch (error) {
-      console.error("Failed to fetch dashboard data", error);
-    } finally {
-      setLoading(false);
-    }
-  }
-  fetchDashboardData();
-}, []);
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading Dashboard...</div>;
+        const data = await res.json();
+        if (res.ok && data) {
+          setStats({
+            totalRevenue: data.totalRevenue || 0,
+            totalOrders: data.totalOrders || 0,
+            pendingOrdersCount: data.pendingOrdersCount || 0,
+            recentOrders: data.recentOrders || [],
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+            style={{ borderColor: "var(--border-soft)", borderTopColor: "var(--rose-primary)" }}
+          />
+          <p className="text-[13px] text-[var(--text-muted)]">Loading dashboard…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    {
+      label: "Total Revenue",
+      value: `$${stats.totalRevenue.toFixed(2)}`,
+      Icon: DollarSign,
+      accent: "#22c55e",
+      accentBg: "rgba(34,197,94,0.10)",
+    },
+    {
+      label: "Total Orders",
+      value: String(stats.totalOrders),
+      Icon: ShoppingBag,
+      accent: "#3b82f6",
+      accentBg: "rgba(59,130,246,0.10)",
+    },
+    {
+      label: "Pending Orders",
+      value: String(stats.pendingOrdersCount),
+      Icon: Clock,
+      accent: "#f59e0b",
+      accentBg: "rgba(245,158,11,0.10)",
+    },
+  ];
 
   return (
     <div className="space-y-6">
+
+      {/* Page title */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text-main)]">Dashboard Overview</h1>
-        <p className="text-sm text-gray-500">Welcome back, Admin. Here is your store's real-time performance.</p>
+        <h1 className="text-[21px] font-semibold text-[var(--text-main)]">Dashboard</h1>
+        <p className="mt-0.5 text-[13px] font-light text-[var(--text-muted)]">
+          Real-time overview of your store performance.
+        </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-green-50 text-green-600 rounded-xl">
-            <DollarSign className="w-6 h-6" />
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {statCards.map(({ label, value, Icon, accent, accentBg }) => (
+          <div
+            key={label}
+            className="flex items-center gap-4 rounded-2xl border p-5"
+            style={{ borderColor: "var(--border-soft)", background: "var(--bg-section)" }}
+          >
+            <div
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ background: accentBg }}
+            >
+              <Icon size={19} style={{ color: accent }} />
+            </div>
+            <div>
+              <p className="text-[12px] font-medium text-[var(--text-muted)]">{label}</p>
+              <p className="mt-0.5 text-[22px] font-semibold text-[var(--text-main)] leading-tight">
+                {value}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-gray-500 font-medium">Total Revenue</p>
-            <h3 className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toFixed(2)}</h3>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-blue-50 text-blue-600 rounded-xl">
-            <ShoppingBag className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-500 font-medium">Total Orders</p>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.totalOrders}</h3>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-orange-50 text-orange-600 rounded-xl">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-500 font-medium">Pending Orders</p>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.pendingOrdersCount}</h3>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Recent Orders Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-[var(--text-main)]">Recent Orders</h2>
-          <button onClick={() => router.push('/admin/orders')} className="text-sm text-[#C06C84] font-medium hover:underline flex items-center gap-1">
-            View All <ArrowRight className="w-4 h-4" />
+      {/* Recent orders */}
+      <div
+        className="overflow-hidden rounded-2xl border"
+        style={{ borderColor: "var(--border-soft)", background: "var(--bg-section)" }}
+      >
+        {/* Table header */}
+        <div
+          className="flex items-center justify-between border-b px-6 py-4"
+          style={{ borderColor: "var(--border-soft)", background: "var(--bg-base)" }}
+        >
+          <p className="text-[14px] font-semibold text-[var(--text-main)]">Recent Orders</p>
+          <button
+            onClick={() => router.push("/admin/orders")}
+            className="flex items-center gap-1.5 text-[12.5px] font-medium transition hover:underline"
+            style={{ color: "var(--rose-primary)" }}
+          >
+            View all <ArrowRight size={13} />
           </button>
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase">Order ID</th>
-                <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase">Customer</th>
-                <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase">Amount</th>
-                <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase">Status</th>
+              <tr style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--bg-base)" }}>
+                {["Order ID", "Customer", "Amount", "Status"].map((col) => (
+                  <th
+                    key={col}
+                    className="px-6 py-3 text-[10.5px] font-semibold uppercase tracking-[0.08em]"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {stats.recentOrders.length === 0 ? (
-                <tr><td colSpan={4} className="py-6 text-center text-gray-500">No orders yet.</td></tr>
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="py-10 text-center text-[13px]"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    No orders yet.
+                  </td>
+                </tr>
               ) : (
-                stats.recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-4 px-6 font-mono text-sm text-gray-600">{order.id.split('-')[0]}...</td>
-                    <td className="py-4 px-6 font-medium text-gray-900">{order.shipping_name || "Guest"}</td>
-                    <td className="py-4 px-6 font-medium text-gray-900">${order.total}</td>
-                    <td className="py-4 px-6">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${
-                        order.status === 'paid' ? 'bg-green-100 text-green-700' :
-                        order.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                        order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                        order.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
-                        order.status === 'cancelled' || order.status === 'failed' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                stats.recentOrders.map((order, idx) => {
+                  const { bg, text } = orderStatusStyle(order.status);
+                  const isLast = idx === stats.recentOrders.length - 1;
+                  return (
+                    <tr
+                      key={order.id}
+                      className="transition hover:bg-[var(--bg-base)]"
+                      style={{ borderBottom: isLast ? "none" : "1px solid var(--border-soft)" }}
+                    >
+                      <td className="px-6 py-4">
+                        <span
+                          className="font-mono text-[12px]"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          {order.id.split("-")[0]}…
+                        </span>
+                      </td>
+                      <td
+                        className="px-6 py-4 text-[13px] font-medium"
+                        style={{ color: "var(--text-main)" }}
+                      >
+                        {order.shipping_name || "Guest"}
+                      </td>
+                      <td
+                        className="px-6 py-4 text-[13px] font-semibold"
+                        style={{ color: "var(--text-main)" }}
+                      >
+                        ${Number(order.total).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className="inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize"
+                          style={{ background: bg, color: text }}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

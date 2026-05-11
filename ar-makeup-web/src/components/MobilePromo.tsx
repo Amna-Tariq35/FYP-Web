@@ -1,4 +1,4 @@
-import { Sparkles, Download, Star } from 'lucide-react';
+import { Sparkles, Download } from 'lucide-react';
 
 export default function MobilePromo() {
   const features = ['Foundation', 'Eyeliner', 'Skin Analysis', 'Save Looks'];
@@ -6,7 +6,7 @@ export default function MobilePromo() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 
         .promo-card {
           font-family: 'DM Sans', sans-serif;
@@ -18,39 +18,31 @@ export default function MobilePromo() {
           align-items: center;
           justify-content: space-between;
           gap: 32px;
-          background: #fff;
-          border: 1px solid rgba(192, 108, 132, 0.1);
-          box-shadow: 0 8px 40px rgba(192, 108, 132, 0.1), 0 2px 8px rgba(0,0,0,0.04);
+          background: #fff8f9;
+          border: 1px solid rgba(192,108,132,0.12);
         }
 
         @media (max-width: 640px) {
-          .promo-card {
-            flex-direction: column;
-            padding: 32px 24px;
-            text-align: center;
-          }
+          .promo-card { flex-direction: column; padding: 28px 24px; text-align: center; }
           .promo-features { justify-content: center; }
           .promo-right { width: 100%; align-items: center; }
         }
 
-        /* Decorative blobs inside card */
-        .promo-blob {
+        /* Decorative — no blur, just soft radial shapes */
+        .promo-accent {
           position: absolute;
           border-radius: 50%;
-          filter: blur(60px);
           pointer-events: none;
-          opacity: 0.5;
         }
-        .promo-blob-1 {
-          width: 280px; height: 280px;
-          top: -80px; right: -60px;
-          background: radial-gradient(circle, #f7d9e3, #e8b4c0);
+        .promo-accent-1 {
+          width: 320px; height: 320px;
+          top: -100px; right: -80px;
+          background: radial-gradient(circle at 40% 40%, rgba(231,166,180,0.22), transparent 70%);
         }
-        .promo-blob-2 {
-          width: 180px; height: 180px;
-          bottom: -60px; left: 10%;
-          background: radial-gradient(circle, #fce4ec, #f8bbd0);
-          opacity: 0.3;
+        .promo-accent-2 {
+          width: 200px; height: 200px;
+          bottom: -80px; left: 5%;
+          background: radial-gradient(circle, rgba(252,228,236,0.35), transparent 65%);
         }
 
         .promo-left {
@@ -62,31 +54,13 @@ export default function MobilePromo() {
           flex: 1;
         }
 
-        /* Icon ring */
-        .promo-icon-wrap {
-          position: relative;
-          flex-shrink: 0;
-        }
         .promo-icon-ring {
-          width: 56px; height: 56px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #f9e4ea, #f0c0cc);
+          width: 52px; height: 52px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #fde8ef, #f4c0ce);
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 16px rgba(192,108,132,0.25);
-        }
-        .promo-icon-dot {
-          position: absolute;
-          top: 2px; right: 2px;
-          width: 14px; height: 14px;
-          background: #C06C84;
-          border-radius: 50%;
-          border: 2px solid #fff;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .promo-icon-dot-inner {
-          width: 5px; height: 5px;
-          background: #fff;
-          border-radius: 50%;
+          flex-shrink: 0;
+          border: 1px solid rgba(192,108,132,0.15);
         }
 
         .promo-text { flex: 1; }
@@ -97,27 +71,27 @@ export default function MobilePromo() {
           letter-spacing: 0.14em;
           text-transform: uppercase;
           color: #C06C84;
-          margin-bottom: 6px;
-          display: flex; align-items: center; gap: 5px;
+          margin-bottom: 7px;
         }
 
         .promo-title {
           font-family: 'Cormorant Garamond', serif;
-          font-size: clamp(1.4rem, 2.5vw, 1.75rem);
+          font-size: clamp(1.35rem, 2.4vw, 1.65rem);
           font-weight: 500;
           color: #1a1a1a;
-          line-height: 1.2;
-          margin: 0 0 8px;
+          line-height: 1.18;
+          margin: 0 0 10px;
           letter-spacing: -0.01em;
         }
         .promo-title em { font-style: italic; color: #C06C84; }
 
         .promo-desc {
-          font-size: 13px;
-          color: #9a8f8f;
-          line-height: 1.65;
-          max-width: 380px;
+          font-size: 12.5px;
+          color: #9a8a8e;
+          line-height: 1.7;
+          max-width: 360px;
           margin: 0 0 16px;
+          font-weight: 300;
         }
 
         .promo-features {
@@ -126,112 +100,84 @@ export default function MobilePromo() {
           gap: 6px;
         }
         .promo-chip {
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 500;
           color: #C06C84;
-          background: rgba(192,108,132,0.08);
-          border: 1px solid rgba(192,108,132,0.15);
-          padding: 4px 12px;
+          background: rgba(192,108,132,0.07);
+          border: 1px solid rgba(192,108,132,0.14);
+          padding: 4px 11px;
           border-radius: 100px;
-          letter-spacing: 0.02em;
         }
 
-        /* Right side */
         .promo-right {
           position: relative;
           z-index: 1;
           display: flex;
           flex-direction: column;
           align-items: flex-end;
-          gap: 16px;
+          gap: 12px;
           flex-shrink: 0;
         }
 
-        /* Rating */
-        .promo-rating {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          gap: 4px;
-        }
-        .promo-stars {
-          display: flex; gap: 2px;
-        }
-        .promo-rating-text {
-          font-size: 11px;
-          color: #b0a0a8;
-          font-weight: 500;
-        }
-
-        /* Download button */
         .promo-download-btn {
           display: flex;
           align-items: center;
           gap: 10px;
-          background: #1a1a1a;
+          background: #1a1214;
           color: #fff;
           border: none;
-          padding: 14px 28px;
+          padding: 13px 26px;
           border-radius: 100px;
-          font-size: 14px;
+          font-size: 13.5px;
           font-weight: 600;
           font-family: 'DM Sans', sans-serif;
           cursor: pointer;
           letter-spacing: 0.02em;
-          transition: all 0.25s ease;
-          box-shadow: 0 6px 24px rgba(26,26,26,0.2);
+          transition: all 0.2s ease;
           white-space: nowrap;
         }
         .promo-download-btn:hover {
-          background: #2a2a2a;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 32px rgba(26,26,26,0.28);
+          background: #2a1e22;
+          transform: translateY(-1px);
+          box-shadow: 0 8px 24px rgba(26,18,20,0.2);
         }
         .promo-download-btn:active { transform: translateY(0); }
 
         .promo-btn-icon {
-          width: 28px; height: 28px;
-          background: rgba(255,255,255,0.12);
+          width: 26px; height: 26px;
+          background: rgba(255,255,255,0.1);
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
 
-        .promo-stores {
-          font-size: 10px;
+        .promo-note {
+          font-size: 10.5px;
           color: #c0b0b8;
-          font-weight: 500;
-          letter-spacing: 0.04em;
-          text-align: center;
+          font-weight: 400;
+          letter-spacing: 0.03em;
+          text-align: right;
         }
       `}</style>
 
       <div className="promo-card">
-        {/* Background blobs */}
-        <div className="promo-blob promo-blob-1" />
-        <div className="promo-blob promo-blob-2" />
+        <div className="promo-accent promo-accent-1" />
+        <div className="promo-accent promo-accent-2" />
 
-        {/* Left — text */}
+        {/* Left */}
         <div className="promo-left">
-          <div className="promo-icon-wrap">
-            <div className="promo-icon-ring">
-              <Sparkles size={22} color="#C06C84" />
-            </div>
-            <div className="promo-icon-dot">
-              <div className="promo-icon-dot-inner" />
-            </div>
+          <div className="promo-icon-ring">
+            <Sparkles size={20} color="#C06C84" />
           </div>
 
           <div className="promo-text">
-            <div className="promo-eyebrow">
-              <Star size={9} fill="#C06C84" strokeWidth={0} />
-              Full AR Experience
-            </div>
+            <p className="promo-eyebrow">Mobile App</p>
             <h3 className="promo-title">
-              Try More with Our <em>Mobile App</em>
+              More with Our <em>Mobile App</em>
             </h3>
             <p className="promo-desc">
-              This web preview includes Lipstick &amp; Blush. Download the app for the complete experience — more products, real‑time skin analysis, and saved looks.
+              This web preview includes Lipstick &amp; Blush. The app unlocks
+              real‑time AR rendering, skin analysis, and the full product library.
             </p>
             <div className="promo-features">
               {features.map((f) => (
@@ -241,25 +187,15 @@ export default function MobilePromo() {
           </div>
         </div>
 
-        {/* Right — CTA */}
+        {/* Right */}
         <div className="promo-right">
-          <div className="promo-rating">
-            <div className="promo-stars">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={13} fill="#C06C84" color="#C06C84" strokeWidth={0} />
-              ))}
-            </div>
-            <span className="promo-rating-text">4.9 · 12k reviews</span>
-          </div>
-
           <button className="promo-download-btn">
             <div className="promo-btn-icon">
-              <Download size={14} />
+              <Download size={13} />
             </div>
             Download Free
           </button>
-
-          <span className="promo-stores">iOS &amp; Android</span>
+          <span className="promo-note">iOS &amp; Android</span>
         </div>
       </div>
     </>

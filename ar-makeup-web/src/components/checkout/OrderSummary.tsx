@@ -3,10 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { loadCart, getCartCount, getCartSubtotal } from "@/src/store/cart";
-
-// If you already have this helper, import it.
-// If not, we’ll use a safe fallback inside this file.
-import { getProductImageUrl } from "@/src/lib/catalog/image"; // <-- adjust if your path differs
+import { getProductImageUrl } from "@/src/lib/catalog/image";
 
 type Props = {
   title?: string;
@@ -14,7 +11,6 @@ type Props = {
 };
 
 function formatMoney(amount: number, currency: string = "USD") {
-  // simple currency formatting (Phase 2)
   try {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -25,19 +21,12 @@ function formatMoney(amount: number, currency: string = "USD") {
   }
 }
 
-/** Fallback if helper is missing */
-function safeImageUrl(url?: string | null) {
-  if (url && url.trim().length > 0) return url;
-  return "/images/product_placeholder.png";
-}
-
 export default function OrderSummary({
   title = "Order summary",
   showShippingNote = true,
 }: Props) {
   const [version, setVersion] = useState(0);
 
-  // Re-render when cart updates (your project already dispatches cart_updated)
   useEffect(() => {
     const onUpdate = () => setVersion((v) => v + 1);
     window.addEventListener("cart_updated", onUpdate);
@@ -48,12 +37,10 @@ export default function OrderSummary({
     };
   }, []);
 
-  // Read cart on each version bump
   const cart = useMemo(() => loadCart(), [version]);
   const count = useMemo(() => getCartCount(cart), [cart]);
   const subtotal = useMemo(() => getCartSubtotal(cart), [cart]);
 
-  // Phase 2: shipping fee 0 (simulated)
   const shippingFee = 0;
   const total = subtotal + shippingFee;
 
@@ -69,32 +56,45 @@ export default function OrderSummary({
             {count} {count === 1 ? "item" : "items"}
           </div>
         </div>
-
-        <span className="ui-badge">Phase 2</span>
       </div>
 
       <div className="ui-divider" />
 
       {/* Items */}
       {count === 0 ? (
-        <div className="ui-muted">
-          Your cart is empty. Please add products to continue.
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F4C2C2]/30">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M6 6h15l-2 9H8L6 6Z"
+                stroke="#C06C84"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M6 6 5 3H2"
+                stroke="#C06C84"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM18 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                stroke="#C06C84"
+                strokeWidth="1.5"
+              />
+            </svg>
+          </div>
+          <p className="text-sm text-[var(--text-muted)]">
+            Your cart is empty. Add products to continue.
+          </p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {cart.items.map((item) => {
             const qty = item.quantity ?? 1;
             const unit = Number(item.price ?? 0);
             const line = unit * qty;
-
-            // Use helper if available; otherwise safe fallback.
-            let img = safeImageUrl(item.image_url);
-            try {
-              // If helper exists and you imported it correctly:
-              img = getProductImageUrl(item.image_url);
-            } catch {
-              // ignore if helper import path not correct
-            }
+            const img = getProductImageUrl(item.image_url);
 
             return (
               <li
@@ -102,8 +102,12 @@ export default function OrderSummary({
                 className="flex items-start gap-3"
               >
                 {/* Image */}
-                <div className="relative h-14 w-14 overflow-hidden rounded-xl border"
-                  style={{ borderColor: "var(--border-soft)", background: "white" }}
+                <div
+                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border"
+                  style={{
+                    borderColor: "var(--border-soft)",
+                    background: "white",
+                  }}
                 >
                   <Image
                     src={img}
@@ -116,42 +120,40 @@ export default function OrderSummary({
 
                 {/* Content */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-[var(--text-main)] truncate">
+                      <div className="truncate text-sm font-semibold text-[var(--text-main)]">
                         {item.name ?? item.product_key}
                       </div>
 
                       <div className="ui-muted mt-0.5">
-                        {item.brand ? item.brand : "—"}
+                        {item.brand ?? "—"}
                       </div>
 
-                      {/* Shade */}
                       {item.shade_name ? (
-                        <div className="text-xs mt-1 text-[var(--text-secondary)]">
+                        <div className="mt-1 text-xs text-[var(--text-secondary)]">
                           Shade:{" "}
-                          <span className="font-semibold">
-                            {item.shade_name}
-                          </span>
+                          <span className="font-semibold">{item.shade_name}</span>
                         </div>
                       ) : null}
 
-                      <div className="text-xs mt-1 text-[var(--text-muted)]">
-                        Qty: <span className="font-semibold">{qty}</span>
+                      <div className="mt-1 text-xs text-[var(--text-muted)]">
+                        Qty:{" "}
+                        <span className="font-semibold text-[var(--text-secondary)]">
+                          {qty}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Price */}
-                    <div className="text-sm font-semibold text-[var(--text-main)] whitespace-nowrap">
+                    {/* Line total */}
+                    <div className="whitespace-nowrap text-sm font-semibold text-[var(--text-main)]">
                       {formatMoney(line)}
                     </div>
                   </div>
 
-                  {/* Unit price (subtle) */}
+                  {/* Unit price */}
                   {unit > 0 ? (
-                    <div className="ui-muted mt-1">
-                      {formatMoney(unit)} each
-                    </div>
+                    <div className="ui-muted mt-1">{formatMoney(unit)} each</div>
                   ) : (
                     <div className="ui-muted mt-1">Price not available</div>
                   )}
@@ -175,24 +177,24 @@ export default function OrderSummary({
 
         <div className="flex items-center justify-between text-sm">
           <span className="text-[var(--text-secondary)]">Shipping</span>
-          <span className="font-semibold text-[var(--text-main)]">
+          <span className="font-semibold text-emerald-600">
             {shippingFee === 0 ? "Free" : formatMoney(shippingFee)}
           </span>
         </div>
 
         <div
-          className="flex items-center justify-between text-base pt-2"
+          className="flex items-center justify-between pt-3 text-base"
           style={{ borderTop: "1px solid var(--border-soft)" }}
         >
           <span className="font-semibold text-[var(--text-main)]">Total</span>
-          <span className="font-bold text-[var(--text-main)]">
+          <span className="text-lg font-bold text-[var(--text-main)]">
             {formatMoney(total)}
           </span>
         </div>
 
         {showShippingNote ? (
-          <p className="ui-helper">
-            Shipping is free in Phase 2 (demo). Taxes are not applied.
+          <p className="ui-helper pt-1">
+            Free shipping on all orders. Taxes calculated at checkout.
           </p>
         ) : null}
       </div>

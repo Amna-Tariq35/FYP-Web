@@ -6,7 +6,6 @@ import { Sparkles, Clock, Tag, ImageOff, ArrowRight } from "lucide-react";
 import { SavedLook } from "../../types";
 import { supabase } from "../../lib/supabase/client";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -15,7 +14,6 @@ function formatDate(iso: string) {
   });
 }
 
-// ── Skeleton Card ─────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div className="look-card look-card--skeleton" aria-hidden>
@@ -32,7 +30,6 @@ function SkeletonCard() {
   );
 }
 
-// ── Image with fallback ───────────────────────────────────────────────────────
 function LookImage({ src, alt }: { src?: string | null; alt: string }) {
   const [errored, setErrored] = useState(false);
 
@@ -56,7 +53,6 @@ function LookImage({ src, alt }: { src?: string | null; alt: string }) {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MyLooksPage() {
   const [looks, setLooks] = useState<SavedLook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,9 +61,7 @@ export default function MyLooksPage() {
   useEffect(() => {
     const fetchLooks = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
           setAuthError(true);
@@ -100,12 +94,12 @@ export default function MyLooksPage() {
         .looks-page {
           min-height: 100vh;
           background: var(--bg-base);
-          padding: 112px 16px 64px;
+          padding: 80px 16px 64px;
         }
-        .looks-container { max-width: 1280px; margin: 0 auto; }
+        .looks-container { max-width: 1200px; margin: 0 auto; }
 
         /* ── Header ─────────────────────────────────────────── */
-        .looks-header { margin-bottom: 40px; }
+        .looks-header { margin-bottom: 36px; }
         .looks-header-top {
           display: flex;
           align-items: flex-end;
@@ -116,52 +110,57 @@ export default function MyLooksPage() {
         .looks-eyebrow {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          font-size: 11px;
-          font-weight: 700;
+          gap: 5px;
+          font-size: 10.5px;
+          font-weight: 600;
           letter-spacing: 0.1em;
           text-transform: uppercase;
           color: var(--rose-primary);
           margin-bottom: 8px;
         }
         .looks-title {
-          font-size: clamp(26px, 4vw, 36px);
-          font-weight: 800;
+          font-size: clamp(22px, 3.5vw, 30px);
+          font-weight: 600;
           color: var(--text-main);
-          letter-spacing: -0.02em;
-          line-height: 1.15;
-          margin: 0 0 6px;
+          letter-spacing: -0.015em;
+          line-height: 1.2;
+          margin: 0 0 5px;
         }
-        .looks-subtitle { font-size: 14px; color: var(--text-muted); margin: 0; }
+        .looks-subtitle {
+          font-size: 13px;
+          font-weight: 300;
+          color: var(--text-muted);
+          margin: 0;
+        }
 
         .looks-count-badge {
           background: var(--bg-section);
           border: 1px solid var(--border-soft);
-          border-radius: 14px;
-          padding: 10px 20px;
+          border-radius: 16px;
+          padding: 12px 22px;
           text-align: center;
           flex-shrink: 0;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
         .looks-count-num {
           display: block;
-          font-size: 28px;
-          font-weight: 800;
+          font-size: 26px;
+          font-weight: 700;
           color: var(--rose-primary);
           line-height: 1;
         }
         .looks-count-label {
           display: block;
-          font-size: 11px;
+          font-size: 10.5px;
+          font-weight: 500;
           color: var(--text-muted);
           margin-top: 3px;
-          font-weight: 500;
+          letter-spacing: 0.03em;
         }
 
         /* ── Grid ───────────────────────────────────────────── */
         .looks-grid {
           display: grid;
-          gap: 22px;
+          gap: 20px;
           grid-template-columns: 1fr;
         }
         @media (min-width: 540px) { .looks-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -178,18 +177,16 @@ export default function MyLooksPage() {
           text-decoration: none;
           color: inherit;
           transition: box-shadow 0.22s, transform 0.22s, border-color 0.22s;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.05);
         }
         .look-card:not(.look-card--skeleton):hover {
-          box-shadow: 0 8px 32px rgba(0,0,0,0.11);
-          transform: translateY(-3px);
-          border-color: color-mix(in srgb, var(--rose-primary) 35%, transparent);
+          box-shadow: 0 8px 28px rgba(0,0,0,0.09);
+          transform: translateY(-2px);
+          border-color: rgba(192,108,132,0.30);
         }
 
-        /* Image */
         .look-card-image {
           width: 100%;
-          height: 220px;
+          height: 210px;
           flex-shrink: 0;
           display: block;
           object-fit: cover;
@@ -202,28 +199,28 @@ export default function MyLooksPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 7px;
         }
-        .placeholder-icon { width: 30px; height: 30px; color: var(--border-soft); }
-        .placeholder-label { font-size: 12px; color: var(--text-muted); }
+        .placeholder-icon { width: 26px; height: 26px; color: var(--border-soft); }
+        .placeholder-label { font-size: 11.5px; color: var(--text-muted); }
 
         /* Body */
         .look-card-body {
           padding: 16px 18px 18px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 7px;
           flex: 1;
         }
         .look-card-name {
-          font-size: 16px;
-          font-weight: 700;
+          font-size: 15px;
+          font-weight: 600;
           color: var(--text-main);
           line-height: 1.3;
-          transition: color 0.15s;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          transition: color 0.15s;
         }
         .look-card:hover .look-card-name { color: var(--rose-primary); }
 
@@ -232,24 +229,24 @@ export default function MyLooksPage() {
           align-items: center;
           gap: 5px;
           font-size: 11.5px;
+          font-weight: 400;
           color: var(--text-muted);
-          font-weight: 500;
         }
 
-        .look-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .look-card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
         .look-tag {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          padding: 3px 10px;
+          padding: 3px 9px;
           background: var(--bg-base);
           border: 1px solid var(--border-soft);
           border-radius: 99px;
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 500;
           color: var(--text-muted);
         }
-        .no-tags { font-size: 11.5px; color: var(--text-muted); font-style: italic; }
+        .no-tags { font-size: 11px; color: var(--text-muted); font-style: italic; }
 
         .look-card-footer {
           display: flex;
@@ -268,7 +265,7 @@ export default function MyLooksPage() {
           color: var(--rose-primary);
           transition: gap 0.15s;
         }
-        .look-card:hover .look-card-cta { gap: 9px; }
+        .look-card:hover .look-card-cta { gap: 8px; }
 
         /* ── Skeleton ────────────────────────────────────────── */
         .look-card--skeleton { pointer-events: none; }
@@ -279,53 +276,48 @@ export default function MyLooksPage() {
         .skeleton-block,
         .skeleton-line,
         .skeleton-tag {
-          background: linear-gradient(
-            90deg,
-            var(--border-soft) 25%,
-            var(--bg-base) 50%,
-            var(--border-soft) 75%
-          );
+          background: linear-gradient(90deg, var(--border-soft) 25%, var(--bg-base) 50%, var(--border-soft) 75%);
           background-size: 1000px 100%;
           animation: ml-shimmer 1.5s infinite;
           border-radius: 8px;
         }
-        .skeleton-block  { height: 220px; border-radius: 0; }
-        .skeleton-line   { height: 14px; }
-        .skeleton-line--title { width: 60%; height: 18px; margin-bottom: 6px; }
-        .skeleton-line--short { width: 38%; }
-        .skeleton-tags-row { display: flex; gap: 8px; margin-top: 4px; }
-        .skeleton-tag  { height: 24px; width: 58px; border-radius: 99px; }
+        .skeleton-block  { height: 210px; border-radius: 0; }
+        .skeleton-line   { height: 13px; }
+        .skeleton-line--title { width: 58%; height: 17px; margin-bottom: 5px; }
+        .skeleton-line--short { width: 36%; }
+        .skeleton-tags-row { display: flex; gap: 7px; margin-top: 3px; }
+        .skeleton-tag  { height: 22px; width: 55px; border-radius: 99px; }
 
         /* ── Empty / Auth ────────────────────────────────────── */
         .looks-empty {
           background: var(--bg-section);
           border: 1px solid var(--border-soft);
-          border-radius: 24px;
-          padding: 72px 24px;
+          border-radius: 22px;
+          padding: 64px 24px;
           text-align: center;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
         .empty-icon-wrap {
-          width: 72px; height: 72px;
-          border-radius: 50%;
-          background: color-mix(in srgb, var(--rose-primary) 12%, transparent);
+          width: 64px; height: 64px;
+          border-radius: 18px;
+          background: rgba(192,108,132,0.09);
+          border: 1px solid rgba(192,108,132,0.14);
           display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 20px;
+          margin: 0 auto 18px;
         }
-        .empty-title { font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0 0 8px; }
-        .empty-desc  { font-size: 14px; color: var(--text-muted); margin: 0 auto 24px; max-width: 360px; line-height: 1.65; }
+        .empty-title { font-size: 17px; font-weight: 600; color: var(--text-main); margin: 0 0 7px; }
+        .empty-desc  { font-size: 13px; font-weight: 300; color: var(--text-muted); margin: 0 auto 22px; max-width: 340px; line-height: 1.7; }
         .empty-cta {
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 11px 26px;
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 10px 24px;
           background: var(--rose-primary);
           color: white;
-          border-radius: 14px;
-          font-size: 13.5px;
+          border-radius: 13px;
+          font-size: 13px;
           font-weight: 600;
           text-decoration: none;
-          transition: opacity 0.15s, transform 0.15s;
+          transition: opacity 0.15s;
         }
-        .empty-cta:hover { opacity: 0.9; transform: scale(1.02); }
+        .empty-cta:hover { opacity: 0.88; }
       `}</style>
 
       <div className="looks-page">
@@ -355,12 +347,12 @@ export default function MyLooksPage() {
           {authError && (
             <div className="looks-empty">
               <div className="empty-icon-wrap">
-                <Sparkles className="w-8 h-8" style={{ color: "var(--rose-primary)" }} />
+                <Sparkles className="w-7 h-7" style={{ color: "var(--rose-primary)" }} />
               </div>
               <h3 className="empty-title">Sign in to see your looks</h3>
-              <p className="empty-desc">Please log in to access your personal AR makeup gallery.</p>
+              <p className="empty-desc">Please sign in to access your personal AR makeup gallery.</p>
               <Link href="/auth/sign-in" className="empty-cta">
-                Sign In <ArrowRight className="w-4 h-4" />
+                Sign in <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           )}
@@ -376,11 +368,11 @@ export default function MyLooksPage() {
           {!loading && !authError && looks.length === 0 && (
             <div className="looks-empty">
               <div className="empty-icon-wrap">
-                <Sparkles className="w-8 h-8" style={{ color: "var(--rose-primary)" }} />
+                <Sparkles className="w-7 h-7" style={{ color: "var(--rose-primary)" }} />
               </div>
               <h3 className="empty-title">No looks saved yet</h3>
               <p className="empty-desc">
-                Try on makeup in our AR Studio, then save your favorite combinations here.
+                Try on makeup in the AR Studio, then save your favorite combinations here.
               </p>
               <Link href="/ar-studio" className="empty-cta">
                 Open AR Studio <ArrowRight className="w-4 h-4" />

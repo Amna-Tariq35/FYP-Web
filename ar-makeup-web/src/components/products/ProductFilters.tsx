@@ -20,19 +20,14 @@ export default function ProductFilters({
   const currentBrand = searchParams.get("brand") || "";
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      updateParams("q", search);
-    }, 300);
+    const timer = setTimeout(() => updateParams("q", search), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
   const updateParams = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
+    if (value) params.set(key, value);
+    else params.delete(key);
     params.delete("page");
     router.push(`${pathname}?${params.toString()}`);
   };
@@ -42,81 +37,129 @@ export default function ProductFilters({
     router.push(pathname);
   };
 
-  const hasActiveFilters = searchParams.get("q") || searchParams.get("category") || searchParams.get("brand");
+  const hasActiveFilters =
+    searchParams.get("q") ||
+    searchParams.get("category") ||
+    searchParams.get("brand");
 
   return (
-    <div className="space-y-8">
-      
-      {/* Search Bar (Fixed Overlap Issue) */}
+    <div className="space-y-7">
+
+      {/* ── Search ── */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search
+          className="absolute left-3.5 top-1/2 -translate-y-1/2"
+          size={13}
+          style={{ color: "var(--text-muted)" }}
+        />
         <input
           type="text"
           placeholder="Search products..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black transition-all placeholder:text-gray-400"
+          className="w-full rounded-xl border border-[var(--border-soft)] bg-[var(--bg-base)] py-2.5 pl-9 pr-8 text-[13px] text-[var(--text-main)] placeholder:text-[var(--text-muted)] outline-none transition focus:border-[var(--rose-primary)]/50 focus:ring-2 focus:ring-[var(--rose-primary)]/10"
         />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+            aria-label="Clear search"
+          >
+            <X size={12} style={{ color: "var(--text-muted)" }} />
+          </button>
+        )}
       </div>
 
-      {/* Categories */}
+      {/* ── Categories ── */}
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 mb-3">
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
           Category
-        </h3>
-        <div className="space-y-1">
-          <button 
+        </p>
+        <div className="space-y-0.5">
+          <FilterButton
+            label="All Categories"
+            active={!currentCategory}
             onClick={() => updateParams("category", "")}
-            className={`block w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${!currentCategory ? "bg-black text-white font-medium" : "text-gray-600 hover:bg-gray-100"}`}
-          >
-            All Categories
-          </button>
+          />
           {categories.map((c) => (
-            <button 
+            <FilterButton
               key={c}
+              label={c}
+              active={currentCategory === c}
               onClick={() => updateParams("category", c)}
-              className={`block w-full text-left text-sm px-3 py-2 rounded-lg capitalize transition-colors ${currentCategory === c ? "bg-black text-white font-medium" : "text-gray-600 hover:bg-gray-100"}`}
-            >
-              {c}
-            </button>
+            />
           ))}
         </div>
       </div>
 
-      {/* Brands */}
+      {/* ── Brands ── */}
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 mb-3">
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
           Brand
-        </h3>
-        <div className="space-y-1 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-          <button 
+        </p>
+        <div
+          className="space-y-0.5"
+          style={{ maxHeight: 200, overflowY: "auto", paddingRight: 2 }}
+        >
+          <FilterButton
+            label="All Brands"
+            active={!currentBrand}
             onClick={() => updateParams("brand", "")}
-            className={`block w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${!currentBrand ? "bg-black text-white font-medium" : "text-gray-600 hover:bg-gray-100"}`}
-          >
-            All Brands
-          </button>
+          />
           {brands.map((b) => (
-            <button 
+            <FilterButton
               key={b}
+              label={b}
+              active={currentBrand === b}
               onClick={() => updateParams("brand", b)}
-              className={`block w-full text-left text-sm px-3 py-2 rounded-lg capitalize transition-colors ${currentBrand === b ? "bg-black text-white font-medium" : "text-gray-600 hover:bg-gray-100"}`}
-            >
-              {b}
-            </button>
+            />
           ))}
         </div>
       </div>
 
-      {/* Clear Filters */}
+      {/* ── Clear ── */}
       {hasActiveFilters && (
         <button
           onClick={clearFilters}
-          className="flex items-center justify-center gap-2 w-full py-2.5 mt-4 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--rose-primary)]/40 py-2.5 text-[12.5px] font-medium transition hover:bg-[var(--rose-primary)]/5"
+          style={{ color: "var(--rose-primary)" }}
         >
-          <X className="w-4 h-4" />
+          <X size={13} />
           Clear all filters
         </button>
       )}
     </div>
+  );
+}
+
+function FilterButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] capitalize transition-all duration-150",
+        active
+          ? "bg-[var(--rose-primary)]/10 font-semibold text-[var(--rose-primary)]"
+          : "font-normal text-[var(--text-muted)] hover:bg-[var(--bg-base)]",
+      ].join(" ")}
+    >
+      {/* active dot indicator */}
+      <span
+        className="h-1.5 w-1.5 flex-shrink-0 rounded-full transition-all"
+        style={{
+          background: active ? "var(--rose-primary)" : "transparent",
+          border: active ? "none" : "1.5px solid var(--border-soft)",
+        }}
+      />
+      {label}
+    </button>
   );
 }

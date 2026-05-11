@@ -52,9 +52,12 @@ export default function ReceiptSummary({
 }) {
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-[var(--text-main)]">{title}</h3>
-        <span className="ui-badge">{items?.length || 0} items</span>
+        <span className="inline-flex items-center rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
+          {items?.length || 0} {items?.length === 1 ? "item" : "items"}
+        </span>
       </div>
 
       <div className="ui-divider" />
@@ -64,12 +67,9 @@ export default function ReceiptSummary({
         {items.map((it) => {
           const img = it.image_url || FALLBACK_IMAGE;
           return (
-            <div
-              key={it.id}
-              className="flex items-start gap-3"
-            >
+            <div key={it.id} className="flex items-start gap-3">
               <div
-                className="relative h-14 w-14 overflow-hidden rounded-xl border"
+                className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border"
                 style={{ borderColor: "var(--border-soft)", background: "white" }}
               >
                 <Image
@@ -84,26 +84,32 @@ export default function ReceiptSummary({
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-[var(--text-main)] truncate">
+                    <div className="truncate text-sm font-semibold text-[var(--text-main)]">
                       {it.name}
                     </div>
                     {it.brand ? (
-                      <div className="text-xs text-[var(--text-muted)] truncate">
+                      <div className="truncate text-xs text-[var(--text-muted)]">
                         {it.brand}
                       </div>
                     ) : null}
                   </div>
 
-                  <div className="text-sm font-semibold text-[var(--text-main)] whitespace-nowrap">
+                  <div className="whitespace-nowrap text-sm font-semibold text-[var(--text-main)]">
                     {formatMoney(it.line_total, order.currency)}
                   </div>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {it.shade_name ? <span className="ui-chip">Shade: {it.shade_name}</span> : null}
-                  <span className="ui-chip">Qty: {it.quantity}</span>
-                  <span className="ui-chip">
-                    Unit: {formatMoney(it.unit_price, order.currency)}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {it.shade_name ? (
+                    <span className="inline-flex items-center rounded-full bg-[#FDF2F4] px-2 py-0.5 text-[10px] font-medium text-[#C06C84]">
+                      {it.shade_name}
+                    </span>
+                  ) : null}
+                  <span className="inline-flex items-center rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                    Qty: {it.quantity}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                    {formatMoney(it.unit_price, order.currency)} each
                   </span>
                 </div>
               </div>
@@ -125,18 +131,19 @@ export default function ReceiptSummary({
 
         <div className="flex items-center justify-between">
           <span className="text-[var(--text-muted)]">Shipping</span>
-          <span className="font-semibold text-[var(--text-main)]">
+          <span className={order.shipping_fee > 0 ? "font-semibold text-[var(--text-main)]" : "font-semibold text-emerald-600"}>
             {order.shipping_fee > 0
               ? formatMoney(order.shipping_fee, order.currency)
               : "Free"}
           </span>
         </div>
 
-        <div className="ui-divider" />
-
-        <div className="flex items-center justify-between">
-          <span className="text-[var(--text-main)] font-semibold">Total</span>
-          <span className="text-[var(--text-main)] font-bold">
+        <div
+          className="flex items-center justify-between pt-2"
+          style={{ borderTop: "1px solid var(--border-soft)" }}
+        >
+          <span className="font-semibold text-[var(--text-main)]">Total</span>
+          <span className="text-base font-bold text-[var(--text-main)]">
             {formatMoney(order.total, order.currency)}
           </span>
         </div>
@@ -144,15 +151,25 @@ export default function ReceiptSummary({
 
       <div className="ui-divider" />
 
-      {/* Shipping preview */}
-      <div className="text-sm">
-        <div className="font-semibold text-[var(--text-main)]">Shipping</div>
-        <div className="mt-2 space-y-1 text-[var(--text-secondary)]">
+      {/* Shipping address */}
+      <div className="rounded-xl bg-black/[0.025] px-4 py-3">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+          Shipping address
+        </div>
+        <div className="space-y-0.5 text-sm">
           <div className="font-semibold text-[var(--text-main)]">
             {order.shipping_name}
           </div>
-          <div>{order.shipping_phone}</div>
-          <div>
+          <div className="text-[var(--text-secondary)]">{order.shipping_phone}</div>
+          <div className="text-[var(--text-secondary)]">
             {[order.shipping_address, order.shipping_city, order.shipping_country]
               .filter(Boolean)
               .join(", ")}

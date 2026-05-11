@@ -27,11 +27,9 @@ export default function PaymentPanel() {
   );
 
   const [selectedMethod, setSelectedMethod] = useState<"cod" | "card">("cod");
-
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Validate shipping presence
   useEffect(() => {
     const s = loadShippingInfo();
     setShipping(s);
@@ -42,9 +40,7 @@ export default function PaymentPanel() {
   }, [router]);
 
   const shippingLine = useMemo(() => {
-    const parts = [shipping.address, shipping.city, shipping.country].filter(
-      Boolean,
-    );
+    const parts = [shipping.address, shipping.city, shipping.country].filter(Boolean);
     return parts.join(", ");
   }, [shipping.address, shipping.city, shipping.country]);
 
@@ -53,13 +49,10 @@ export default function PaymentPanel() {
     setIsPlacing(true);
 
     try {
-      // 1) Read latest cart + shipping
       const currentCart: CartState = loadCart();
       const items = currentCart.items || [];
-
       const currentShipping = loadShippingInfo();
 
-      // 2) Basic guards (even though CheckoutGuard exists)
       if (!items.length) {
         setError("Your cart is empty. Please add items before checkout.");
         router.replace("/cart");
@@ -67,17 +60,11 @@ export default function PaymentPanel() {
       }
 
       if (!isShippingComplete(currentShipping)) {
-        setError(
-          "Shipping details are incomplete. Please fill shipping first.",
-        );
+        setError("Shipping details are incomplete. Please fill shipping first.");
         router.replace("/checkout/shipping");
         return;
       }
 
-      // 3) Guest policy note:
-      // If your RLS requires guest_email for guest inserts, and user is not logged in,
-      // missing email will fail on the API with RLS error.
-      // We can pre-validate: if email provided, validate format; if not, we still allow attempt (demo choice)
       if (currentShipping.email?.trim()) {
         if (!isValidEmail(currentShipping.email)) {
           setError("Please enter a valid email address (or clear it).");
@@ -86,7 +73,6 @@ export default function PaymentPanel() {
         }
       }
 
-      // 4) Prepare payload (match CreateOrderPayload)
       const payload = {
         shipping: currentShipping,
         items: items.map((it) => ({
@@ -99,12 +85,8 @@ export default function PaymentPanel() {
           price: it.price,
           image_url: it.image_url,
         })),
-        // Payment method is not stored yet (Phase 2),
-        // but we keep it here for future extension.
-        // method: selectedMethod,
       };
 
-      // 5) Call API to create the order record first
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,7 +114,6 @@ export default function PaymentPanel() {
         return;
       }
 
-      // If user intends to pay by card, send them to Stripe checkout
       if (selectedMethod === "card") {
         if (!orderId) {
           setError("Unable to determine order ID for Stripe checkout.");
@@ -147,6 +128,7 @@ export default function PaymentPanel() {
         });
 
         const stripeData = await stripeResp.json().catch(() => ({}));
+
         if (!stripeResp.ok) {
           const msg =
             stripeData?.error ||
@@ -156,20 +138,19 @@ export default function PaymentPanel() {
           return;
         }
 
-        // NAYA TAREEQA: Seedha URL par redirect karein
         if (stripeData.url) {
           window.location.href = stripeData.url;
         } else {
           setError("Stripe session URL not found. Please try again.");
           setIsPlacing(false);
         }
-        
+
         return;
       }
 
-      // default / cod flow: clear local state and navigate to success
+      // COD flow — clear cart + shipping, navigate to success
       try {
-        localStorage.removeItem("ar_cart_v1");
+        localStorage.removeItem("ar_makeup_cart_v1");
         localStorage.removeItem("ar_shipping_v1");
       } catch {}
 
@@ -199,32 +180,58 @@ export default function PaymentPanel() {
         </p>
       </div>
 
-      {/* Inline error (professional) */}
+      {/* Error */}
       {error ? (
         <div
-          className="ui-section p-4"
+          className="rounded-2xl border p-4"
           style={{
             borderColor: "color-mix(in srgb, #FDA29B 55%, var(--border-soft))",
-            background: "color-mix(in srgb, #FDA29B 12%, white)",
+            background: "color-mix(in srgb, #FDA29B 10%, white)",
           }}
           role="alert"
         >
-          <div className="text-sm font-semibold text-[var(--text-main)]">
-            Couldn’t place order
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                  stroke="#dc2626"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[var(--text-main)]">
+                Couldn't place order
+              </div>
+              <div className="ui-muted mt-0.5">{error}</div>
+            </div>
           </div>
-          <div className="ui-muted mt-1">{error}</div>
         </div>
       ) : null}
 
       {/* Shipping preview */}
-      <div className="ui-section p-4">
+      <div
+        className="rounded-2xl border p-4"
+        style={{ borderColor: "var(--border-soft)", background: "white" }}
+      >
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-[var(--text-main)]">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-main)]">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#C06C84]">
+              <path
+                d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
             Delivering to
           </div>
           <button
             type="button"
-            className="ui-btn-ghost"
+            className="ui-btn-ghost text-xs"
             onClick={() => router.push("/checkout/shipping")}
             disabled={isPlacing}
           >
@@ -233,79 +240,91 @@ export default function PaymentPanel() {
         </div>
 
         <div className="mt-3 space-y-1 text-sm">
-          <div className="text-[var(--text-main)] font-semibold">
+          <div className="font-semibold text-[var(--text-main)]">
             {shipping.name || "—"}
           </div>
-          <div className="text-[var(--text-secondary)]">
-            {shipping.phone || "—"}
-          </div>
-          <div className="text-[var(--text-secondary)]">
-            {shippingLine || "—"}
-          </div>
+          <div className="text-[var(--text-secondary)]">{shipping.phone || "—"}</div>
+          <div className="text-[var(--text-secondary)]">{shippingLine || "—"}</div>
 
           {shipping.email?.trim() ? (
-            <div className="text-[var(--text-muted)]">
-              Email: {shipping.email}
-            </div>
+            <div className="text-[var(--text-muted)]">{shipping.email}</div>
           ) : (
-            <div className="text-[var(--text-muted)]">
-              Email: <span className="italic">not provided</span>
+            <div className="text-[var(--text-muted)] text-xs mt-1">
+              No email provided —{" "}
+              <button
+                type="button"
+                className="text-[#C06C84] hover:underline"
+                onClick={() => router.push("/checkout/shipping")}
+                disabled={isPlacing}
+              >
+                add one for order tracking
+              </button>
             </div>
           )}
         </div>
-
-        {!shipping.email?.trim() ? (
-          <p className="ui-helper mt-3">
-            Tip: Adding an email helps with guest checkout tracking.
-          </p>
-        ) : null}
       </div>
 
       {/* Payment method */}
-      <div className="ui-section p-4">
+      <div
+        className="rounded-2xl border p-4"
+        style={{ borderColor: "var(--border-soft)", background: "white" }}
+      >
         <div className="text-sm font-semibold text-[var(--text-main)]">
           Payment method
         </div>
 
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Card option */}
           <button
             type="button"
-            className={[
-              "ui-btn-secondary justify-start",
-              selectedMethod === "card"
-                ? "ring-2 ring-[var(--rose-primary)]"
-                : "",
-            ].join(" ")}
             onClick={() => setSelectedMethod("card")}
             disabled={isPlacing}
+            className={[
+              "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-all text-left",
+              selectedMethod === "card"
+                ? "border-[#C06C84] bg-[#FDF2F4] text-[#C06C84]"
+                : "border-[var(--border-soft)] bg-white text-[var(--text-secondary)] hover:border-[#C06C84]/40",
+            ].join(" ")}
           >
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ background: "var(--rose-primary)" }}
-              aria-hidden="true"
-            />
-            Card (Stripe)
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0">
+              <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M2 10h20" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+            <div>
+              <div className="font-semibold text-sm">Card</div>
+              <div className="text-[10px] opacity-70">Powered by Stripe</div>
+            </div>
           </button>
 
+          {/* COD option */}
           <button
             type="button"
-            className={[
-              "ui-btn-secondary justify-start",
-              selectedMethod === "cod"
-                ? "ring-2 ring-[var(--rose-primary)]"
-                : "",
-            ].join(" ")}
             onClick={() => setSelectedMethod("cod")}
             disabled={isPlacing}
+            className={[
+              "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-all text-left",
+              selectedMethod === "cod"
+                ? "border-[#C06C84] bg-[#FDF2F4] text-[#C06C84]"
+                : "border-[var(--border-soft)] bg-white text-[var(--text-secondary)] hover:border-[#C06C84]/40",
+            ].join(" ")}
           >
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--rose-soft) 65%, white)",
-              }}
-              aria-hidden="true"
-            />
-            Cash on Delivery
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0">
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M12 6v2m0 8v2M9 8.27l1 1.73M14 14l1 1.73M6.27 9l1.73 1M16 14l1.73 1M6 12h2m8 0h2M6.27 15l1.73-1M16 10l1.73-1M9 15.73l1-1.73M14 10l1-1.73"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div>
+              <div className="font-semibold text-sm">Cash on Delivery</div>
+              <div className="text-[10px] opacity-70">Pay when it arrives</div>
+            </div>
           </button>
         </div>
       </div>
@@ -329,13 +348,23 @@ export default function PaymentPanel() {
           onClick={placeOrder}
           disabled={isPlacing}
         >
-          {isPlacing ? "Processing…" : "Place order"}
+          {isPlacing ? (
+            <span className="flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              Processing…
+            </span>
+          ) : (
+            "Place order"
+          )}
         </button>
       </div>
 
-      <p className="ui-muted">
-        After placing the order, you’ll see a confirmation screen and your cart
-        will be cleared.
+      <p className="ui-muted text-xs">
+        After placing the order, you'll receive a confirmation and your cart
+        will be cleared automatically.
       </p>
     </div>
   );

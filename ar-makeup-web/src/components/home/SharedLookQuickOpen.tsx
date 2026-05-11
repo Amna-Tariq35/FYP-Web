@@ -22,7 +22,7 @@ export default function SharedLookQuickOpen() {
   function onOpen() {
     const id = extractLookId(text);
     if (!id) {
-      setError("Paste a valid shared link or look ID.");
+      setError("Please paste a valid shared link or look ID.");
       return;
     }
     setError(null);
@@ -30,29 +30,36 @@ export default function SharedLookQuickOpen() {
   }
 
   return (
-    <section className="mt-12 rounded-[22px] border border-black/10 bg-white/60 p-6 backdrop-blur sm:p-8">
-      <h3 className="text-lg font-semibold text-[#141414]">Open a shared look</h3>
-      <p className="mt-1 text-sm text-black/60">
-        Paste a link from mobile (or a look ID) to view the look details.
+    <section className="mt-10 rounded-[22px] border border-black/8 bg-white/65 p-6 backdrop-blur sm:p-8">
+      <h3 className="text-[15px] font-medium text-[#1a0e13]">
+        Open a shared look
+      </h3>
+      <p className="mt-1 text-xs font-light text-[#7a5a65]">
+        Paste a link from the mobile app or enter a look ID to view details.
       </p>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
         <input
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Paste: https://your-site.com/looks/xxxxx"
-          className="w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm text-[#141414] placeholder:text-black/35 outline-none focus:border-[#B65C7A]/50"
+          onChange={(e) => {
+            setText(e.target.value);
+            if (error) setError(null);
+          }}
+          placeholder="https://your-site.com/looks/xxxxx"
+          className="w-full rounded-2xl border border-black/8 bg-white/80 px-4 py-3 text-sm font-light text-[#1a0e13] placeholder:text-black/30 outline-none transition focus:border-[#B65C7A]/40 focus:ring-2 focus:ring-[#B65C7A]/10"
         />
         <button
           type="button"
           onClick={onOpen}
-          className="rounded-2xl bg-[#B65C7A] px-5 py-3 text-sm font-semibold text-white hover:bg-[#A94E6C]"
+          className="shrink-0 rounded-2xl bg-[#B65C7A] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#A94E6C]"
         >
-          Open
+          Open look
         </button>
       </div>
 
-      {error && <p className="mt-3 text-sm text-[#B65C7A]">{error}</p>}
+      {error && (
+        <p className="mt-3 text-[12px] text-[#B65C7A]">{error}</p>
+      )}
     </section>
   );
 }
